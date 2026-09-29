@@ -1,0 +1,414 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../core/breakpoints.dart';
+import '../models/product.dart';
+import '../models/product_query.dart';
+import '../state/product_category_list_notifier.dart';
+import '../state/product_list_notifier.dart';
+import '../widgets/entity_table.dart';
+import '../widgets/product_card.dart';
+
+class ProductListScreen extends StatefulWidget {
+  final Map<String, String> queryParams;
+  const ProductListScreen({super.key, required this.queryParams});
+
+  @override
+  State<ProductListScreen> createState() => _ProductListScreenState();
+}
+
+class _ProductListScreenState extends State<ProductListScreen> {
+  final _searchController = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.text = widget.queryParams['search'] ?? '';
+    // Загрузка после первого кадра: нельзя notifyListeners() во время build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final q = ProductQuery.fromUri(widget.queryParams);
+      context.read<ProductListNotifier>().applyQuery(q);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant ProductListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Пользователь нажал «назад» или вставил другой URL — перечитываем.
+    if (oldWidget.queryParams != widget.queryParams) {
+      final q = ProductQuery.fromUri(widget.queryParams);
+      final current = context.read<ProductListNotifier>().query;
+      if (q.toUri().toString() != current.toUri().toString()) {
+        context.read<ProductListNotifier>().applyQuery(q);
+      }
+      if (_searchController.text != q.search) {
+        _searchController.text = q.search;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Все изменения фильтров идут через адрес — ПР2 п.16.
+  void _updateQuery(ProductQuery next, {bool resetPage = true}) {
+    final q = resetPage ? next.copyWith(page: 1) : next;
+    final uri = Uri(
+      path: '/products',
+      queryParameters: q.toUri().isEmpty ? null : q.toUri(),
+    );
+    context.go(uri.toString());
+  }
+
+  void _onSearchChanged(String value) {
+    // Задержка 300 мс — ПР2 п.17.
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      _updateQuery(
+        context.read<ProductListNotifier>().query.copyWith(search: value),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final notifier = context.watch<ProductListNotifier>();
+    final categories = context.watch<ProductCategoryListNotifier>();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Каталог товаров'),
+        actions: [
+          if (notifier.hasSelection) ...[
+            Center(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text('Выбрано: ${notifier.selected.length}'),
+            )),
+            IconButton(
+              tooltip: 'Удалить выбранные',
+              icon: const Icon(Icons.delete_sweep),
+              onPressed: () => _confirmDeleteSelected(context),
+            ),
+          ],
+          IconButton(
+            tooltip: 'Добавить товар',
+            icon: const Icon(Icons.add),
+            onPressed: () => context.go('/products/new'),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          _filters(context, notifier, categories),
+          Expanded(child: _body(context, notifier, categories)),
+          _pager(context, notifier),
+        ],
+      ),
+    );
+  }
+
+  Widget _filters(
+      BuildContext context,
+      ProductListNotifier n,
+      ProductCategoryListNotifier c,
+      ) {
+    // Wrap вместо Row: не переполняется при узком окне — Приложение Г §6.
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          SizedBox(
+            width: 260,
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              decoration: const InputDecoration(
+                labelText: 'Поиск по названию или артикулу',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 260,
+            child: DropdownButtonFormField<int?>(
+              value: n.query.categoryId,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Категория',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('Все категории')),
+                for (final cat in c.categories)
+                  DropdownMenuItem(value: cat.id, child: Text(cat.name)),
+              ],
+              onChanged: (v) => _updateQuery(n.query.copyWith(categoryId: v)),
+            ),
+          ),
+          SizedBox(
+            width: 140,
+            child: TextFormField(
+              initialValue: n.query.priceFrom?.toString() ?? '',
+              decoration: const InputDecoration(
+                labelText: 'Цена от',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onFieldSubmitted: (v) => _updateQuery(
+                n.query.copyWith(priceFrom: double.tryParse(v)),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 140,
+            child: TextFormField(
+              initialValue: n.query.priceTo?.toString() ?? '',
+              decoration: const InputDecoration(
+                labelText: 'Цена до',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onFieldSubmitted: (v) => _updateQuery(
+                n.query.copyWith(priceTo: double.tryParse(v)),
+              ),
+            ),
+          ),
+          FilterChip(
+            label: const Text('Показать удалённые'),
+            selected: n.query.includeDeleted,
+            onSelected: (v) =>
+                _updateQuery(n.query.copyWith(includeDeleted: v)),
+          ),
+          TextButton.icon(
+            onPressed: () => _updateQuery(const ProductQuery()),
+            icon: const Icon(Icons.clear),
+            label: const Text('Сбросить'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _body(
+      BuildContext context,
+      ProductListNotifier n,
+      ProductCategoryListNotifier c,
+      ) {
+    // Четыре состояния экрана — Приложение В §6.
+    switch (n.status) {
+      case LoadStatus.idle:
+      case LoadStatus.loading:
+        return const Center(child: CircularProgressIndicator());
+      case LoadStatus.error:
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(n.error ?? 'Ошибка'),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: () => n.load(),
+                child: const Text('Повторить'),
+              ),
+            ],
+          ),
+        );
+      case LoadStatus.success:
+        if (n.result.items.isEmpty) {
+          return const Center(child: Text('Товары не найдены'));
+        }
+        // Карточки на узком экране, таблица — на широком.
+        return byScreen(
+          context,
+          compact: _cardList(context, n, c),
+          medium: _table(context, n, c),
+          expanded: _table(context, n, c),
+        );
+    }
+  }
+
+  Widget _cardList(
+      BuildContext context,
+      ProductListNotifier n,
+      ProductCategoryListNotifier c,
+      ) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: n.result.items.length,
+      itemBuilder: (_, i) {
+        final p = n.result.items[i];
+        return ProductCard(
+          product: p,
+          categoryName: c.byId(p.categoryId)?.name ?? '—',
+          selected: n.selected.contains(p.id),
+          onToggle: () => n.toggleSelection(p.id),
+          onEdit: () => context.go('/products/${p.id}/edit'),
+          onDelete: () => _confirmDelete(context, p.id),
+          onRestore: p.isDeleted ? () => n.restore(p.id) : null,
+        );
+      },
+    );
+  }
+
+  Widget _table(
+      BuildContext context,
+      ProductListNotifier n,
+      ProductCategoryListNotifier c,
+      ) {
+    return EntityTable<Product>(
+      items: n.result.items,
+      idOf: (p) => p.id,
+      selected: n.selected,
+      onToggleSelect: n.toggleSelection,
+      sortField: n.query.sortField,
+      sortAscending: n.query.sortAscending,
+      onSort: (field) {
+        final sameField = field == n.query.sortField;
+        _updateQuery(
+          n.query.copyWith(
+            sortField: field,
+            sortAscending: sameField ? !n.query.sortAscending : true,
+          ),
+          resetPage: false,
+        );
+      },
+      columns: [
+        TableColumnSpec(label: 'Название', sortField: 'name',
+            build: (p) => Text(p.name)),
+        TableColumnSpec(label: 'Артикул',
+            build: (p) => Text(p.sku)),
+        TableColumnSpec(label: 'Категория',
+            build: (p) => Text(c.byId(p.categoryId)?.name ?? '—')),
+        TableColumnSpec(label: 'Цена, ₽', sortField: 'price', numeric: true,
+            build: (p) => Text(p.price.toStringAsFixed(2))),
+        TableColumnSpec(label: 'Вес, г', sortField: 'weight', numeric: true,
+            build: (p) => Text('${p.weightGr}')),
+        TableColumnSpec(label: 'В наличии', sortField: 'stock', numeric: true,
+            build: (p) => Text('${p.stockAvailable} / ${p.stockTotal}')),
+      ],
+      actions: (p) => [
+        IconButton(
+          icon: const Icon(Icons.edit),
+          onPressed: () => context.go('/products/${p.id}/edit'),
+        ),
+        if (p.isDeleted)
+          IconButton(
+            icon: const Icon(Icons.restore),
+            tooltip: 'Восстановить',
+            onPressed: () => n.restore(p.id),
+          )
+        else
+          IconButton(
+            icon: const Icon(Icons.delete),
+            tooltip: 'Удалить',
+            onPressed: () => _confirmDelete(context, p.id),
+          ),
+      ],
+    );
+  }
+
+  Widget _pager(BuildContext context, ProductListNotifier n) {
+    final r = n.result;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          Text('Всего: ${r.total}'),
+          const Spacer(),
+          DropdownButton<int>(
+            value: n.query.size,
+            onChanged: (v) {
+              if (v == null) return;
+              _updateQuery(n.query.copyWith(size: v), resetPage: false);
+            },
+            items: const [
+              DropdownMenuItem(value: 10, child: Text('10')),
+              DropdownMenuItem(value: 25, child: Text('25')),
+              DropdownMenuItem(value: 50, child: Text('50')),
+            ],
+          ),
+          const SizedBox(width: 16),
+          IconButton(
+            icon: const Icon(Icons.first_page),
+            onPressed: r.hasPrevious
+                ? () => _updateQuery(n.query.copyWith(page: 1), resetPage: false)
+                : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: r.hasPrevious
+                ? () => _updateQuery(
+                n.query.copyWith(page: n.query.page - 1), resetPage: false)
+                : null,
+          ),
+          Text('${r.page} / ${r.totalPages}'),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: r.hasNext
+                ? () => _updateQuery(
+                n.query.copyWith(page: n.query.page + 1), resetPage: false)
+                : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.last_page),
+            onPressed: r.hasNext
+                ? () => _updateQuery(
+                n.query.copyWith(page: r.totalPages), resetPage: false)
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, int id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Удалить товар?'),
+        content: const Text('Запись будет помечена как удалённая.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Удалить')),
+        ],
+      ),
+    );
+    if (ok == true && context.mounted) {
+      await context.read<ProductListNotifier>().softDelete(id);
+    }
+  }
+
+  Future<void> _confirmDeleteSelected(BuildContext context) async {
+    final n = context.read<ProductListNotifier>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Удалить выбранные товары?'),
+        content: Text('Будет помечено как удалённых: ${n.selected.length}.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Удалить')),
+        ],
+      ),
+    );
+    if (ok == true && context.mounted) {
+      await n.deleteSelected();
+    }
+  }
+}

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../theme_controller.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -8,20 +7,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Главная'),
-        actions: [
-          IconButton(
-            tooltip: 'Сменить тему',
-            icon: Icon(
-              ThemeController.instance.mode == ThemeMode.dark
-                  ? Icons.light_mode
-                  : Icons.dark_mode,
-            ),
-            onPressed: () => ThemeController.instance.toggle(),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Продуктовый магазин')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
@@ -31,15 +17,15 @@ class HomeScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 FilledButton.icon(
-                  onPressed: () => context.go('/calculator'),
-                  icon: const Icon(Icons.calculate),
-                  label: const Text('Калькулятор'),
+                  onPressed: () => context.go('/products'),
+                  icon: const Icon(Icons.storefront),
+                  label: const Text('Каталог товаров'),
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(
-                  onPressed: () => context.go('/converter'),
-                  icon: const Icon(Icons.currency_exchange),
-                  label: const Text('Конвертер валют'),
+                  onPressed: () => context.go('/categories'),
+                  icon: const Icon(Icons.category),
+                  label: const Text('Категории'),
                 ),
               ],
             ),
