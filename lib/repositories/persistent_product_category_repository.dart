@@ -1,14 +1,55 @@
-// lib/repositories/in_memory_product_category_repository.dart
+// lib/repositories/persistent_product_category_repository.dart
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/seed_data.dart';
 import '../models/page_result.dart';
 import '../models/product_category.dart';
 import '../models/product_query.dart';
 import 'product_category_repository.dart';
 
-class InMemoryProductCategoryRepository
+class PersistentProductCategoryRepository
     implements ProductCategoryRepository {
-  final List<ProductCategory> _categories = [...seedCategories];
-  int _nextId = seedCategories.length + 1;
+  static const _key = 'categories_v2';   // <-- подняли версию
+  final SharedPreferences _prefs;
+  List<ProductCategory> _categories = [];
+  int _nextId = 1;
+  bool _wasReset = false;
+  bool get wasReset => _wasReset;
+
+  PersistentProductCategoryRepository(this._prefs) {
+    _restore();
+  }
+
+  void _restore() {
+    final raw = _prefs.getString(_key);
+    if (raw == null) {
+      _categories = [...seedCategories];
+      _nextId = seedCategories.length + 1;
+      _persist();
+      return;
+    }
+    try {
+      final list = jsonDecode(raw) as List;
+      _categories = list
+          .map((e) => ProductCategory.fromJson(e as Map<String, dynamic>))
+          .toList();
+      _nextId = _categories.isEmpty
+          ? 1
+          : _categories.map((c) => c.id).reduce((a, b) => a > b ? a : b) + 1;
+    } catch (_) {
+      _categories = [...seedCategories];
+      _nextId = seedCategories.length + 1;
+      _wasReset = true;
+      _persist();
+    }
+  }
+
+  Future<void> _persist() async {
+    await _prefs.setString(
+      _key,
+      jsonEncode(_categories.map((c) => c.toJson()).toList()),
+    );
+  }
 
   @override
   Future<PageResult<ProductCategory>> find(ProductQuery q) async {
@@ -68,6 +109,7 @@ class InMemoryProductCategoryRepository
       description: category.description,
     );
     _categories.add(created);
+    await _persist();
     return created;
   }
 
@@ -76,6 +118,7 @@ class InMemoryProductCategoryRepository
     final i = _categories.indexWhere((c) => c.id == category.id);
     if (i == -1) throw StateError('Категория ${category.id} не найдена');
     _categories[i] = category;
+    await _persist();
     return category;
   }
 
@@ -84,11 +127,13 @@ class InMemoryProductCategoryRepository
     final i = _categories.indexWhere((c) => c.id == id);
     if (i == -1) throw StateError('Категория $id не найдена');
     _categories[i] = _categories[i].copyWith(deletedAt: DateTime.now());
+    await _persist();
   }
 
   @override
   Future<void> hardDelete(int id) async {
     _categories.removeWhere((c) => c.id == id);
+    await _persist();
   }
 
   @override
@@ -96,6 +141,7 @@ class InMemoryProductCategoryRepository
     final i = _categories.indexWhere((c) => c.id == id);
     if (i == -1) throw StateError('Категория $id не найдена');
     _categories[i] = _categories[i].copyWith(clearDeletedAt: true);
+    await _persist();
   }
 
   @override
@@ -108,6 +154,7 @@ class InMemoryProductCategoryRepository
         count++;
       }
     }
+    await _persist();
     return count;
   }
 

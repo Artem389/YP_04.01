@@ -1,20 +1,61 @@
+// lib/repositories/persistent_product_repository.dart
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/seed_data.dart';
 import '../models/page_result.dart';
 import '../models/product.dart';
 import '../models/product_query.dart';
 import 'product_repository.dart';
 
-class InMemoryProductRepository implements ProductRepository {
-  final List<Product> _products = [...seedProducts];
-  int _nextId = seedProducts.length + 1;
+class PersistentProductRepository implements ProductRepository {
+  static const _key = 'products_v1';
+  final SharedPreferences _prefs;
+  List<Product> _products = [];
+  int _nextId = 1;
+  bool _wasReset = false;
+  bool get wasReset => _wasReset;
+
+  PersistentProductRepository(this._prefs) {
+    _restore();
+  }
+
+  void _restore() {
+    final raw = _prefs.getString(_key);
+    if (raw == null) {
+      _products = [...seedProducts];
+      _nextId = seedProducts.length + 1;
+      _persist();
+      return;
+    }
+    try {
+      final list = jsonDecode(raw) as List;
+      _products = list
+          .map((e) => Product.fromJson(e as Map<String, dynamic>))
+          .toList();
+      _nextId = _products.isEmpty
+          ? 1
+          : _products.map((p) => p.id).reduce((a, b) => a > b ? a : b) + 1;
+    } catch (_) {
+      // Данные испорчены или формат изменился — начинаем заново.
+      _products = [...seedProducts];
+      _nextId = seedProducts.length + 1;
+      _wasReset = true;
+      _persist();
+    }
+  }
+
+  Future<void> _persist() async {
+    await _prefs.setString(
+      _key,
+      jsonEncode(_products.map((p) => p.toJson()).toList()),
+    );
+  }
 
   @override
   Future<PageResult<Product>> find(ProductQuery q) async {
     await Future.delayed(const Duration(milliseconds: 250));
 
-    var rows = _products
-        .where((p) => q.includeDeleted || !p.isDeleted)
-        .toList();
+    var rows = _products.where((p) => q.includeDeleted || !p.isDeleted).toList();
 
     if (q.search.trim().isNotEmpty) {
       final needle = q.search.trim().toLowerCase();
@@ -24,7 +65,6 @@ class InMemoryProductRepository implements ProductRepository {
           p.sku.toLowerCase().contains(needle))
           .toList();
     }
-
     if (q.categoryId != null) {
       rows = rows.where((p) => p.categoryId == q.categoryId).toList();
     }
@@ -72,19 +112,21 @@ class InMemoryProductRepository implements ProductRepository {
 
   @override
   Future<Product> create(Product product) async {
-    final created = Product(
+    final created = product.copyWith(); // id присвоим вручную
+    final withId = Product(
       id: _nextId++,
-      name: product.name,
-      sku: product.sku,
-      price: product.price,
-      weightGr: product.weightGr,
-      categoryId: product.categoryId,
-      supplierIds: product.supplierIds,
-      stockTotal: product.stockTotal,
-      stockAvailable: product.stockAvailable,
+      name: created.name,
+      sku: created.sku,
+      price: created.price,
+      weightGr: created.weightGr,
+      categoryId: created.categoryId,
+      supplierIds: created.supplierIds,
+      stockTotal: created.stockTotal,
+      stockAvailable: created.stockAvailable,
     );
-    _products.add(created);
-    return created;
+    _products.add(withId);
+    await _persist();
+    return withId;
   }
 
   @override
@@ -92,6 +134,7 @@ class InMemoryProductRepository implements ProductRepository {
     final i = _products.indexWhere((p) => p.id == product.id);
     if (i == -1) throw StateError('Товар ${product.id} не найден');
     _products[i] = product;
+    await _persist();
     return product;
   }
 
@@ -100,11 +143,13 @@ class InMemoryProductRepository implements ProductRepository {
     final i = _products.indexWhere((p) => p.id == id);
     if (i == -1) throw StateError('Товар $id не найден');
     _products[i] = _products[i].copyWith(deletedAt: DateTime.now());
+    await _persist();
   }
 
   @override
   Future<void> hardDelete(int id) async {
     _products.removeWhere((p) => p.id == id);
+    await _persist();
   }
 
   @override
@@ -112,20 +157,27 @@ class InMemoryProductRepository implements ProductRepository {
     final i = _products.indexWhere((p) => p.id == id);
     if (i == -1) throw StateError('Товар $id не найден');
     _products[i] = _products[i].copyWith(clearDeletedAt: true);
+    await _persist();
   }
 
   @override
   Future<int> deleteMany(List<int> ids) async {
     var count = 0;
     for (final id in ids) {
-      // Исправление ошибки из ПР2: не `!p[i].isDeleted`, а `!p.isDeleted`.
       final i = _products.indexWhere((p) => p.id == id && !p.isDeleted);
       if (i != -1) {
         _products[i] = _products[i].copyWith(deletedAt: DateTime.now());
         count++;
       }
     }
+    await _persist();
     return count;
+  }
+
+  /// Проверка уникальности артикула (ПР3, п.12).
+  Future<bool> skuExists(String sku, {int? exceptId}) async {
+    return _products.any((p) =>
+    p.sku.toLowerCase() == sku.toLowerCase() && p.id != exceptId);
   }
 
   @override
@@ -146,11 +198,5 @@ class InMemoryProductRepository implements ProductRepository {
   Future<List<int>> supplierIdsOf(int productId) async {
     final p = _products.firstWhere((p) => p.id == productId);
     return p.supplierIds;
-  }
-
-  @override
-  Future<bool> skuExists(String sku, {int? exceptId}) async {
-    return _products.any((p) =>
-    p.sku.toLowerCase() == sku.toLowerCase() && p.id != exceptId);
   }
 }

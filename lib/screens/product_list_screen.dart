@@ -5,11 +5,12 @@ import 'package:provider/provider.dart';
 
 import '../core/breakpoints.dart';
 import '../models/product.dart';
+import '../models/product_category.dart';
 import '../models/product_query.dart';
-import '../state/product_category_list_notifier.dart';
+import '../state/entity_list_notifier.dart';
 import '../state/product_list_notifier.dart';
+import '../widgets/entity_card.dart';
 import '../widgets/entity_table.dart';
-import '../widgets/product_card.dart';
 
 class ProductListScreen extends StatefulWidget {
   final Map<String, String> queryParams;
@@ -27,25 +28,33 @@ class _ProductListScreenState extends State<ProductListScreen> {
   void initState() {
     super.initState();
     _searchController.text = widget.queryParams['search'] ?? '';
-    // Загрузка после первого кадра: нельзя notifyListeners() во время build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final q = ProductQuery.fromUri(widget.queryParams);
       context.read<ProductListNotifier>().applyQuery(q);
+
+      // Подгружаем категории, если ещё не загружены.
+      final cats = context.read<EntityListNotifier<ProductCategory>>();
+      if (cats.status == LoadStatus.idle) {
+        cats.load();
+      }
     });
   }
 
   @override
   void didUpdateWidget(covariant ProductListScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Пользователь нажал «назад» или вставил другой URL — перечитываем.
     if (oldWidget.queryParams != widget.queryParams) {
       final q = ProductQuery.fromUri(widget.queryParams);
       final current = context.read<ProductListNotifier>().query;
-      if (q.toUri().toString() != current.toUri().toString()) {
-        context.read<ProductListNotifier>().applyQuery(q);
-      }
       if (_searchController.text != q.search) {
         _searchController.text = q.search;
+      }
+      if (q.toUri().toString() != current.toUri().toString()) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          context.read<ProductListNotifier>().applyQuery(q);
+        });
       }
     }
   }
@@ -57,7 +66,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     super.dispose();
   }
 
-  /// Все изменения фильтров идут через адрес — ПР2 п.16.
   void _updateQuery(ProductQuery next, {bool resetPage = true}) {
     final q = resetPage ? next.copyWith(page: 1) : next;
     final uri = Uri(
@@ -68,7 +76,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   void _onSearchChanged(String value) {
-    // Задержка 300 мс — ПР2 п.17.
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
       if (!mounted) return;
@@ -78,20 +85,30 @@ class _ProductListScreenState extends State<ProductListScreen> {
     });
   }
 
+  String _categoryName(
+      EntityListNotifier<ProductCategory> c, int categoryId) {
+    for (final cat in c.result.items) {
+      if (cat.id == categoryId) return cat.name;
+    }
+    return '—';
+  }
+
   @override
   Widget build(BuildContext context) {
     final notifier = context.watch<ProductListNotifier>();
-    final categories = context.watch<ProductCategoryListNotifier>();
+    final categories = context.watch<EntityListNotifier<ProductCategory>>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Каталог товаров'),
         actions: [
           if (notifier.hasSelection) ...[
-            Center(child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text('Выбрано: ${notifier.selected.length}'),
-            )),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text('Выбрано: ${notifier.selected.length}'),
+              ),
+            ),
             IconButton(
               tooltip: 'Удалить выбранные',
               icon: const Icon(Icons.delete_sweep),
@@ -118,9 +135,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget _filters(
       BuildContext context,
       ProductListNotifier n,
-      ProductCategoryListNotifier c,
+      EntityListNotifier<ProductCategory> c,
       ) {
-    // Wrap вместо Row: не переполняется при узком окне — Приложение Г §6.
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Wrap(
@@ -153,7 +169,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
               items: [
                 const DropdownMenuItem(value: null, child: Text('Все категории')),
-                for (final cat in c.categories)
+                for (final cat in c.result.items)
                   DropdownMenuItem(value: cat.id, child: Text(cat.name)),
               ],
               onChanged: (v) => _updateQuery(n.query.copyWith(categoryId: v)),
@@ -168,7 +184,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
               onFieldSubmitted: (v) => _updateQuery(
                 n.query.copyWith(priceFrom: double.tryParse(v)),
               ),
@@ -183,7 +200,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
               onFieldSubmitted: (v) => _updateQuery(
                 n.query.copyWith(priceTo: double.tryParse(v)),
               ),
@@ -208,9 +226,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget _body(
       BuildContext context,
       ProductListNotifier n,
-      ProductCategoryListNotifier c,
+      EntityListNotifier<ProductCategory> c,
       ) {
-    // Четыре состояния экрана — Приложение В §6.
     switch (n.status) {
       case LoadStatus.idle:
       case LoadStatus.loading:
@@ -233,7 +250,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
         if (n.result.items.isEmpty) {
           return const Center(child: Text('Товары не найдены'));
         }
-        // Карточки на узком экране, таблица — на широком.
         return byScreen(
           context,
           compact: _cardList(context, n, c),
@@ -246,21 +262,61 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget _cardList(
       BuildContext context,
       ProductListNotifier n,
-      ProductCategoryListNotifier c,
+      EntityListNotifier<ProductCategory> c,
       ) {
     return ListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: n.result.items.length,
       itemBuilder: (_, i) {
         final p = n.result.items[i];
-        return ProductCard(
-          product: p,
-          categoryName: c.byId(p.categoryId)?.name ?? '—',
+        return EntityCard<Product>(
+          item: p,
+          title: Text(p.name),
+          lines: [
+            Text('Артикул: ${p.sku}'),
+            Text('Категория: ${_categoryName(c, p.categoryId)}'),
+            Text('Цена: ${p.price.toStringAsFixed(2)} ₽'),
+            Text('В наличии: ${p.stockAvailable} / ${p.stockTotal}'),
+          ],
           selected: n.selected.contains(p.id),
           onToggle: () => n.toggleSelection(p.id),
-          onEdit: () => context.go('/products/${p.id}/edit'),
-          onDelete: () => _confirmDelete(context, p.id),
-          onRestore: p.isDeleted ? () => n.restore(p.id) : null,
+          actions: [
+            IconButton(
+              tooltip: 'Редактировать',
+              icon: const Icon(Icons.edit),
+              onPressed: () => context.go('/products/${p.id}/edit'),
+            ),
+            if (p.isDeleted)
+              IconButton(
+                tooltip: 'Восстановить',
+                icon: const Icon(Icons.restore),
+                onPressed: () => n.restore(p.id),
+              )
+            else
+              IconButton(
+                tooltip: 'Удалить',
+                icon: const Icon(Icons.delete),
+                onPressed: () => _confirmDelete(context, p.id),
+              ),
+            PopupMenuButton<String>(
+              tooltip: 'Ещё',
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) async {
+                if (value == 'hard') {
+                  await _confirmHardDelete(context, p);
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'hard',
+                  child: ListTile(
+                    leading: Icon(Icons.delete_forever, color: Colors.red),
+                    title: Text('Удалить навсегда'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         );
       },
     );
@@ -269,7 +325,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget _table(
       BuildContext context,
       ProductListNotifier n,
-      ProductCategoryListNotifier c,
+      EntityListNotifier<ProductCategory> c,
       ) {
     return EntityTable<Product>(
       items: n.result.items,
@@ -289,36 +345,71 @@ class _ProductListScreenState extends State<ProductListScreen> {
         );
       },
       columns: [
-        TableColumnSpec(label: 'Название', sortField: 'name',
-            build: (p) => Text(p.name)),
-        TableColumnSpec(label: 'Артикул',
-            build: (p) => Text(p.sku)),
-        TableColumnSpec(label: 'Категория',
-            build: (p) => Text(c.byId(p.categoryId)?.name ?? '—')),
-        TableColumnSpec(label: 'Цена, ₽', sortField: 'price', numeric: true,
-            build: (p) => Text(p.price.toStringAsFixed(2))),
-        TableColumnSpec(label: 'Вес, г', sortField: 'weight', numeric: true,
-            build: (p) => Text('${p.weightGr}')),
-        TableColumnSpec(label: 'В наличии', sortField: 'stock', numeric: true,
-            build: (p) => Text('${p.stockAvailable} / ${p.stockTotal}')),
+        TableColumnSpec(
+          label: 'Название',
+          sortField: 'name',
+          build: (p) => Text(p.name),
+        ),
+        TableColumnSpec(label: 'Артикул', build: (p) => Text(p.sku)),
+        TableColumnSpec(
+          label: 'Категория',
+          build: (p) => Text(_categoryName(c, p.categoryId)),
+        ),
+        TableColumnSpec(
+          label: 'Цена, ₽',
+          sortField: 'price',
+          numeric: true,
+          build: (p) => Text(p.price.toStringAsFixed(2)),
+        ),
+        TableColumnSpec(
+          label: 'Вес, г',
+          sortField: 'weight',
+          numeric: true,
+          build: (p) => Text('${p.weightGr}'),
+        ),
+        TableColumnSpec(
+          label: 'В наличии',
+          sortField: 'stock',
+          numeric: true,
+          build: (p) => Text('${p.stockAvailable} / ${p.stockTotal}'),
+        ),
       ],
       actions: (p) => [
         IconButton(
+          tooltip: 'Редактировать',
           icon: const Icon(Icons.edit),
           onPressed: () => context.go('/products/${p.id}/edit'),
         ),
         if (p.isDeleted)
           IconButton(
-            icon: const Icon(Icons.restore),
             tooltip: 'Восстановить',
+            icon: const Icon(Icons.restore),
             onPressed: () => n.restore(p.id),
           )
         else
           IconButton(
-            icon: const Icon(Icons.delete),
             tooltip: 'Удалить',
+            icon: const Icon(Icons.delete),
             onPressed: () => _confirmDelete(context, p.id),
           ),
+        PopupMenuButton<String>(
+          tooltip: 'Ещё',
+          icon: const Icon(Icons.more_vert),
+          onSelected: (value) async {
+            if (value == 'hard') {
+              await _confirmHardDelete(context, p);
+            }
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+              value: 'hard',
+              child: ListTile(
+                leading: Icon(Icons.delete_forever, color: Colors.red),
+                title: Text('Удалить навсегда'),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -354,7 +445,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
             icon: const Icon(Icons.chevron_left),
             onPressed: r.hasPrevious
                 ? () => _updateQuery(
-                n.query.copyWith(page: n.query.page - 1), resetPage: false)
+              n.query.copyWith(page: n.query.page - 1),
+              resetPage: false,
+            )
                 : null,
           ),
           Text('${r.page} / ${r.totalPages}'),
@@ -362,14 +455,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
             icon: const Icon(Icons.chevron_right),
             onPressed: r.hasNext
                 ? () => _updateQuery(
-                n.query.copyWith(page: n.query.page + 1), resetPage: false)
+              n.query.copyWith(page: n.query.page + 1),
+              resetPage: false,
+            )
                 : null,
           ),
           IconButton(
             icon: const Icon(Icons.last_page),
             onPressed: r.hasNext
                 ? () => _updateQuery(
-                n.query.copyWith(page: r.totalPages), resetPage: false)
+              n.query.copyWith(page: r.totalPages),
+              resetPage: false,
+            )
                 : null,
           ),
         ],
@@ -384,13 +481,46 @@ class _ProductListScreenState extends State<ProductListScreen> {
         title: const Text('Удалить товар?'),
         content: const Text('Запись будет помечена как удалённая.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Удалить')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить'),
+          ),
         ],
       ),
     );
     if (ok == true && context.mounted) {
       await context.read<ProductListNotifier>().softDelete(id);
+    }
+  }
+
+  Future<void> _confirmHardDelete(BuildContext context, Product p) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Удалить навсегда?'),
+        content: Text(
+          'Товар «${p.name}» будет удалён физически. '
+              'Восстановление невозможно.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Удалить навсегда'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && context.mounted) {
+      await context.read<ProductListNotifier>().hardDelete(p.id);
     }
   }
 
@@ -402,8 +532,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
         title: const Text('Удалить выбранные товары?'),
         content: Text('Будет помечено как удалённых: ${n.selected.length}.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Удалить')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить'),
+          ),
         ],
       ),
     );
