@@ -1,11 +1,12 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+
+import '../core/api_exceptions.dart';
 import '../models/page_result.dart';
 import '../models/product.dart';
 import '../models/product_query.dart';
 import '../repositories/product_repository.dart';
 import 'entity_list_notifier.dart' show LoadStatus;
-
-// enum LoadStatus { idle, loading, success, error }
 
 class ProductListNotifier extends ChangeNotifier {
   final ProductRepository _repository;
@@ -18,6 +19,13 @@ class ProductListNotifier extends ChangeNotifier {
   final Set<int> _selected = {};
   bool _disposed = false;
 
+  /// Токен для отмены устаревших запросов.
+  CancelToken? _inflight;
+
+  /// Монотонный счётчик: помогает отбросить запоздавший ответ,
+  /// если отмена не успела сработать.
+  int _loadSeq = 0;
+
   ProductQuery get query => _query;
   PageResult<Product> get result => _result;
   LoadStatus get status => _status;
@@ -28,6 +36,7 @@ class ProductListNotifier extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _inflight?.cancel('disposed');
     super.dispose();
   }
 
@@ -36,13 +45,29 @@ class ProductListNotifier extends ChangeNotifier {
   }
 
   Future<void> load() async {
+    // Отменяем предыдущий запрос: пользователь уже набрал новый текст
+    // и ждёт свежий результат.
+    _inflight?.cancel('новый запрос');
+    final token = CancelToken();
+    _inflight = token;
+    final seq = ++_loadSeq;
+
     _status = LoadStatus.loading;
     _error = null;
     _safeNotify();
+
     try {
-      _result = await _repository.find(_query);
+      final page = await _repository.find(_query, cancelToken: token);
+      if (_disposed || seq != _loadSeq) return; // ответ устарел
+      _result = page;
       _status = LoadStatus.success;
+    } on ApiException catch (e) {
+      if (_disposed || seq != _loadSeq) return;
+      if (e is NetworkException && e.message.contains('отменён')) return;
+      _error = e.message;
+      _status = LoadStatus.error;
     } catch (e) {
+      if (_disposed || seq != _loadSeq) return;
       _error = 'Не удалось загрузить список: $e';
       _status = LoadStatus.error;
     }

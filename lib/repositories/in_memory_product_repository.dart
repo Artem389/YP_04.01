@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../data/seed_data.dart';
 import '../models/page_result.dart';
 import '../models/product.dart';
@@ -9,7 +11,9 @@ class InMemoryProductRepository implements ProductRepository {
   int _nextId = seedProducts.length + 1;
 
   @override
-  Future<PageResult<Product>> find(ProductQuery q) async {
+  Future<PageResult<Product>> find(ProductQuery q, {
+    CancelToken? cancelToken,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 250));
 
     var rows = _products

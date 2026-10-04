@@ -2,8 +2,13 @@ import '../models/page_result.dart';
 import '../models/product_query.dart';
 import '../models/supplier.dart';
 
+import 'package:dio/dio.dart';
+
 abstract interface class SupplierRepository {
-  Future<PageResult<Supplier>> find(ProductQuery query);
+  Future<PageResult<Supplier>> find(
+      ProductQuery query, {
+        CancelToken? cancelToken,
+      });
   Future<List<Supplier>> findAll();
   Future<Supplier?> findById(int id);
   Future<Supplier> create(Supplier supplier);

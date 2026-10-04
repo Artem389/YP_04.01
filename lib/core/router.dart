@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_project_web/core/token_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -11,16 +12,30 @@ import '../screens/category_list_screen.dart';
 import '../screens/customer_form_screen.dart';
 import '../screens/entity_list_screen.dart';
 import '../screens/home_screen.dart';
+import '../screens/login_screen.dart';
 import '../screens/not_found_screen.dart';
 import '../screens/product_form_screen.dart';
 import '../screens/product_list_screen.dart';
+import '../screens/sell_product_screen.dart';
 import '../screens/supplier_form_screen.dart';
 import '../state/entity_list_notifier.dart';
 import '../widgets/entity_table.dart';
 
+TokenStorage? _tokenStorage;
+
 final appRouter = GoRouter(
   initialLocation: '/',
+  redirect: (context, state) {
+    final tokens = _tokenStorage;
+    if (tokens == null) return null; // не настроено — пускаем как есть
+    final loggedIn = tokens.accessToken != null;
+    final goingToLogin = state.matchedLocation == '/login';
+    if (!loggedIn && !goingToLogin) return '/login';
+    if (loggedIn && goingToLogin) return '/';
+    return null;
+  },
   routes: [
+    GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
     GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
 
     // ---- ТОВАРЫ ----
@@ -45,7 +60,9 @@ final appRouter = GoRouter(
     // ---- КАТЕГОРИИ ----
     GoRoute(
       path: '/categories',
-      builder: (_, __) => const CategoryListScreen(),
+      builder: (context, state) => CategoryListScreen(
+        queryParams: state.uri.queryParameters,
+      ),
       routes: [
         GoRoute(
           path: 'new',
@@ -145,6 +162,13 @@ final appRouter = GoRouter(
       ],
     ),
 
+    GoRoute(
+      path: '/products/:id/sell',
+      builder: (_, state) => SellProductScreen(
+        productId: int.parse(state.pathParameters['id']!),
+      ),
+    ),
+
     // ---- ПОКУПАТЕЛИ ----
     GoRoute(
       path: '/customers',
@@ -237,6 +261,10 @@ final appRouter = GoRouter(
   errorBuilder: (_, state) => NotFoundScreen(location: state.uri.toString()),
 );
 
+void configureRouterAuth(TokenStorage tokens) {
+  _tokenStorage = tokens;
+}
+
 Future<void> _confirmHardDeleteCustomer(
     BuildContext context, Customer c) async {
   final ok = await showDialog<bool>(
@@ -270,22 +298,23 @@ Future<void> _confirmHardDeleteCustomer(
 Future<void> _confirmHardDeleteSupplier(
     BuildContext context, Supplier s) async {
   final repo = context.read<SupplierRepository>();
-
-  // Сначала — проверка связанных товаров.
   final count = await repo.countLinkedProducts(s.id);
   if (!context.mounted) return;
+
   if (count > 0) {
     await showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Удаление невозможно'),
         content: Text(
-            'На поставщика «${s.name}» ссылаются $count товаров. '
-                'Сначала переназначьте их.'),
+          'На поставщика «${s.name}» ссылаются $count товаров. '
+              'Сначала переназначьте их.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Понятно')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Понятно'),
+          ),
         ],
       ),
     );
@@ -297,12 +326,14 @@ Future<void> _confirmHardDeleteSupplier(
     builder: (_) => AlertDialog(
       title: const Text('Удалить навсегда?'),
       content: Text(
-          'Поставщик «${s.name}» будет удалён физически. '
-              'Восстановление невозможно.'),
+        'Поставщик «${s.name}» будет удалён физически. '
+            'Восстановление невозможно.',
+      ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена')),
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Отмена'),
+        ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
           style: FilledButton.styleFrom(backgroundColor: Colors.red),
@@ -343,13 +374,16 @@ Future<void> _confirmDeleteSupplier(BuildContext context, Supplier s) async {
   final repo = context.read<SupplierRepository>();
   final count = await repo.countLinkedProducts(s.id);
   if (!context.mounted) return;
+
   if (count > 0) {
     await showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Удаление невозможно'),
         content: Text(
-            'На поставщика «${s.name}» ссылаются $count товаров.'),
+          'На поставщика «${s.name}» ссылаются $count товаров. '
+              'Сначала переназначьте их на другого поставщика.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -360,21 +394,28 @@ Future<void> _confirmDeleteSupplier(BuildContext context, Supplier s) async {
     );
     return;
   }
+
   final ok = await showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
       title: const Text('Удалить поставщика?'),
-      content: Text('Поставщик «${s.name}» будет помечен как удалённый.'),
+      content: Text(
+        'Поставщик «${s.name}» будет помечен как удалённый. '
+            'Восстановить его можно будет позже.',
+      ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена')),
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Отмена'),
+        ),
         FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить')),
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Удалить'),
+        ),
       ],
     ),
   );
+
   if (ok == true && context.mounted) {
     await repo.softDelete(s.id);
     if (context.mounted) {

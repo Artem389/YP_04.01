@@ -15,7 +15,8 @@ import '../widgets/entity_card.dart';
 import '../widgets/entity_table.dart';
 
 class CategoryListScreen extends StatefulWidget {
-  const CategoryListScreen({super.key});
+  final Map<String, String> queryParams;
+  const CategoryListScreen({super.key, required this.queryParams});
 
   @override
   State<CategoryListScreen> createState() => _CategoryListScreenState();
@@ -25,25 +26,41 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
   final _searchController = TextEditingController();
   Timer? _debounce;
 
-  /// Кэш числа связанных товаров, чтобы не дёргать репозиторий в build.
+  /// Кэш числа товаров по категории, чтобы не дёргать репозиторий
+  /// в build.
   final Map<int, int> _linkedProductsCountCache = {};
 
   @override
   void initState() {
     super.initState();
+    _searchController.text = widget.queryParams['search'] ?? '';
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-
-      final n = context.read<EntityListNotifier<ProductCategory>>();
-      // Восстанавливаем текст поиска из уже применённого запроса
-      // (например, при возврате на экран).
-      _searchController.text = n.query.search;
-
-      if (n.status == LoadStatus.idle) {
-        n.load();
-      }
+      final q = ProductQuery.fromUri(widget.queryParams);
+      context.read<EntityListNotifier<ProductCategory>>().applyQuery(q);
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant CategoryListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.queryParams != widget.queryParams) {
+      final q = ProductQuery.fromUri(widget.queryParams);
+      final current =
+          context.read<EntityListNotifier<ProductCategory>>().query;
+      if (_searchController.text != q.search) {
+        _searchController.text = q.search;
+      }
+      if (q.toUri().toString() != current.toUri().toString()) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          context
+              .read<EntityListNotifier<ProductCategory>>()
+              .applyQuery(q);
+        });
+      }
+    }
   }
 
   @override
@@ -53,12 +70,14 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     super.dispose();
   }
 
-  /// Применяет новый запрос к нотифаеру.
-  /// [resetPage] == true сбрасывает страницу на первую — нужно при
-  /// смене поиска, фильтра или сбросе.
+  /// Применяет новый запрос, отражая его в адресной строке.
   void _updateQuery(ProductQuery next, {bool resetPage = true}) {
     final q = resetPage ? next.copyWith(page: 1) : next;
-    context.read<EntityListNotifier<ProductCategory>>().applyQuery(q);
+    final uri = Uri(
+      path: '/categories',
+      queryParameters: q.toUri().isEmpty ? null : q.toUri(),
+    );
+    context.go(uri.toString());
   }
 
   void _onSearchChanged(String value) {
@@ -78,18 +97,6 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
   @override
   Widget build(BuildContext context) {
     final n = context.watch<EntityListNotifier<ProductCategory>>();
-
-    // Синхронизация контроллера поиска с состоянием нотифаера:
-    // если запрос изменился извне (сброс, back/forward), поле
-    // должно показывать актуальное значение.
-    if (_searchController.text != n.query.search) {
-      _searchController.value = TextEditingValue(
-        text: n.query.search,
-        selection: TextSelection.collapsed(
-          offset: n.query.search.length,
-        ),
-      );
-    }
 
     return Scaffold(
       appBar: AppBar(
@@ -124,8 +131,6 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
       ),
     );
   }
-
-  // ---- Панель фильтров ----
 
   Widget _filters(EntityListNotifier<ProductCategory> n) {
     return Padding(
@@ -164,8 +169,6 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     );
   }
 
-  // ---- Основная область ----
-
   Widget _body(EntityListNotifier<ProductCategory> n) {
     switch (n.status) {
       case LoadStatus.idle:
@@ -189,6 +192,8 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
         if (n.result.items.isEmpty) {
           return const Center(child: Text('Категорий не найдено'));
         }
+        // Перед отрисовкой обновим кэш счётчиков.
+        _refreshLinkedCounts(n.result.items);
         return byScreen(
           context,
           compact: _cardList(context, n),
@@ -198,8 +203,6 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     }
   }
 
-  // ---- Список карточек (узкое окно) ----
-
   Widget _cardList(
       BuildContext context, EntityListNotifier<ProductCategory> n) {
     return ListView.builder(
@@ -207,14 +210,14 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
       itemCount: n.result.items.length,
       itemBuilder: (_, i) {
         final c = n.result.items[i];
-        final linked = _linkedProductsCountCache[c.id] ?? 0;
+        final linked = _linkedProductsCountCache[c.id];
 
         return EntityCard<ProductCategory>(
           item: c,
           title: Text(c.name),
           lines: [
             Text('Описание: ${c.description}'),
-            Text('Товаров: $linked'),
+            Text('Товаров: ${linked ?? '…'}'),
           ],
           selected: n.selected.contains(c.id),
           onToggle: () => n.toggleSelection(c.id),
@@ -234,7 +237,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
               IconButton(
                 tooltip: 'Удалить',
                 icon: const Icon(Icons.delete),
-                onPressed: () => _confirmDelete(context, c),
+                onPressed: () => _confirmSoftDelete(context, c),
               ),
           ],
         );
@@ -242,9 +245,8 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     );
   }
 
-  // ---- Таблица (широкое окно) ----
-
-  Widget _table(BuildContext context, EntityListNotifier<ProductCategory> n) {
+  Widget _table(
+      BuildContext context, EntityListNotifier<ProductCategory> n) {
     return EntityTable<ProductCategory>(
       items: n.result.items,
       idOf: (c) => c.id,
@@ -276,7 +278,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
         TableColumnSpec(
           label: 'Товаров',
           numeric: true,
-          build: (c) => Text('${_linkedProductsCountCache[c.id] ?? 0}'),
+          build: (c) => Text('${_linkedProductsCountCache[c.id] ?? '…'}'),
         ),
       ],
       actions: (c) => [
@@ -321,8 +323,6 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
       ],
     );
   }
-
-  // ---- Пагинация ----
 
   Widget _pager(EntityListNotifier<ProductCategory> n) {
     final r = n.result;
@@ -387,7 +387,24 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     );
   }
 
-  // ---- Удаление / восстановление ----
+  /// Обновляет кэш «сколько товаров в каждой категории».
+  Future<void> _refreshLinkedCounts(List<ProductCategory> cats) async {
+    final repo = context.read<ProductRepository>();
+    var changed = false;
+    for (final c in cats) {
+      if (_linkedProductsCountCache.containsKey(c.id)) continue;
+      try {
+        final count = await repo.countByCategory(c.id);
+        _linkedProductsCountCache[c.id] = count;
+        changed = true;
+      } catch (_) {
+        // не критично для отображения списка — оставим «…»
+      }
+    }
+    if (changed && mounted) {
+      setState(() {});
+    }
+  }
 
   Future<void> _confirmSoftDelete(
       BuildContext context, ProductCategory c) async {
@@ -400,7 +417,9 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('Удаление невозможно'),
-          content: Text('На категорию «${c.name}» ссылаются $linked товаров.'),
+          content: Text(
+            'На категорию «${c.name}» ссылаются $linked товаров.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -415,10 +434,9 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Пометить категорию как удалённую?'),
+        title: const Text('Удалить категорию?'),
         content: Text(
-          'Категория «${c.name}» исчезнет из списка. '
-              'Восстановить её можно будет позже.',
+          'Категория «${c.name}» будет помечена как удалённая.',
         ),
         actions: [
           TextButton(
@@ -435,7 +453,9 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     if (ok == true && context.mounted) {
       await context.read<ProductCategoryRepository>().softDelete(c.id);
       if (context.mounted) {
-        await context.read<EntityListNotifier<ProductCategory>>().load();
+        await context
+            .read<EntityListNotifier<ProductCategory>>()
+            .load();
       }
     }
   }
@@ -452,8 +472,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
         builder: (_) => AlertDialog(
           title: const Text('Удаление невозможно'),
           content: Text(
-            'На категорию «${c.name}» ссылаются $linked товаров. '
-                'Сначала переназначьте их.',
+            'На категорию «${c.name}» ссылаются $linked товаров.',
           ),
           actions: [
             TextButton(
@@ -489,58 +508,11 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     );
     if (ok == true && context.mounted) {
       await context.read<ProductCategoryRepository>().hardDelete(c.id);
+      _linkedProductsCountCache.remove(c.id);
       if (context.mounted) {
-        await context.read<EntityListNotifier<ProductCategory>>().load();
-      }
-    }
-  }
-
-  /// Упрощённый вариант удаления из карточки: сначала проверяет
-  /// связанные товары, потом выполняет логическое удаление.
-  Future<void> _confirmDelete(
-      BuildContext context, ProductCategory c) async {
-    final productRepo = context.read<ProductRepository>();
-    final linked = await productRepo.countByCategory(c.id);
-    if (!context.mounted) return;
-
-    if (linked > 0) {
-      await showDialog<void>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Удаление невозможно'),
-          content: Text('На категорию «${c.name}» ссылаются $linked товаров.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Понятно'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Удалить категорию?'),
-        content: Text('Категория «${c.name}» будет помечена как удалённая.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true && context.mounted) {
-      await context.read<ProductCategoryRepository>().softDelete(c.id);
-      if (context.mounted) {
-        await context.read<EntityListNotifier<ProductCategory>>().load();
+        await context
+            .read<EntityListNotifier<ProductCategory>>()
+            .load();
       }
     }
   }
@@ -559,7 +531,9 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Удалить выбранные категории?'),
-        content: Text('Будет помечено как удалённых: ${n.selected.length}.'),
+        content: Text(
+          'Будет помечено как удалённых: ${n.selected.length}.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -574,23 +548,8 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     );
     if (ok == true && context.mounted) {
       await n.deleteSelected();
+      // после удаления сбрасываем кэш — количество могло измениться
+      _linkedProductsCountCache.clear();
     }
-  }
-
-  // ---- Кэш связанных товаров ----
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _refreshLinkedCounts();
-  }
-
-  Future<void> _refreshLinkedCounts() async {
-    final n = context.read<EntityListNotifier<ProductCategory>>();
-    final repo = context.read<ProductRepository>();
-    for (final c in n.result.items) {
-      _linkedProductsCountCache[c.id] = await repo.countByCategory(c.id);
-    }
-    if (mounted) setState(() {});
   }
 }

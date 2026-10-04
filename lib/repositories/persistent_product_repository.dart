@@ -1,5 +1,6 @@
 // lib/repositories/persistent_product_repository.dart
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/seed_data.dart';
 import '../models/page_result.dart';
@@ -52,7 +53,9 @@ class PersistentProductRepository implements ProductRepository {
   }
 
   @override
-  Future<PageResult<Product>> find(ProductQuery q) async {
+  Future<PageResult<Product>> find(ProductQuery q, {
+    CancelToken? cancelToken,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 250));
 
     var rows = _products.where((p) => q.includeDeleted || !p.isDeleted).toList();

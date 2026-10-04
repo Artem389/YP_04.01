@@ -2,8 +2,13 @@ import '../models/customer.dart';
 import '../models/page_result.dart';
 import '../models/product_query.dart';
 
+import 'package:dio/dio.dart';
+
 abstract interface class CustomerRepository {
-  Future<PageResult<Customer>> find(ProductQuery query);
+  Future<PageResult<Customer>> find(
+      ProductQuery query, {
+        CancelToken? cancelToken,
+      });
   Future<Customer?> findById(int id);
   Future<Customer> create(Customer customer);
   Future<Customer> update(Customer customer);

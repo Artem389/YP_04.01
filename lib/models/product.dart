@@ -1,14 +1,18 @@
 class Product {
   final int id;
   final String name;
-  final String sku;          // артикул
-  final double price;        // цена, руб.
-  final int weightGr;        // вес, граммы
+  final String sku;
+  final double price;
+  final int weightGr;
   final int categoryId;
   final int stockTotal;
   final int stockAvailable;
   final DateTime? deletedAt;
   final List<int> supplierIds;
+
+  // Развёрнутые объекты из ответа сервера (кэш для отображения).
+  final String? categoryName;
+  final List<String> supplierNames;
 
   const Product({
     required this.id,
@@ -21,7 +25,12 @@ class Product {
     required this.stockAvailable,
     this.deletedAt,
     this.supplierIds = const [],
+    this.categoryName,
+    this.supplierNames = const [],
   });
+
+  bool get isDeleted => deletedAt != null;
+  bool get isOutOfStock => stockAvailable == 0;
 
   Product copyWith({
     String? name,
@@ -34,9 +43,11 @@ class Product {
     DateTime? deletedAt,
     bool clearDeletedAt = false,
     List<int>? supplierIds,
+    String? categoryName,
+    List<String>? supplierNames,
   }) {
     return Product(
-      id: id, // id менять нельзя — он идентификатор
+      id: id,
       name: name ?? this.name,
       sku: sku ?? this.sku,
       price: price ?? this.price,
@@ -44,17 +55,56 @@ class Product {
       categoryId: categoryId ?? this.categoryId,
       stockTotal: stockTotal ?? this.stockTotal,
       stockAvailable: stockAvailable ?? this.stockAvailable,
-      // Ловушка copyWith: clearDeletedAt позволяет отличить
-      // «не менять поле» от «сбросить в null» (восстановление товара).
       deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
       supplierIds: supplierIds ?? this.supplierIds,
+      categoryName: categoryName ?? this.categoryName,
+      supplierNames: supplierNames ?? this.supplierNames,
     );
   }
 
-  bool get isDeleted => deletedAt != null;
-  bool get isOutOfStock => stockAvailable == 0;
+  /// Тело для POST/PUT.
+  Map<String, dynamic> toInputJson() => {
+    'name': name,
+    'sku': sku,
+    'price': price,
+    'weightGr': weightGr,
+    'categoryId': categoryId,
+    'supplierId': supplierIds.isEmpty ? null : supplierIds.first,
+    'stockTotal': stockTotal,
+  };
 
-  // lib/models/product.dart (дополнение)
+  /// Чтение из ответа сервера (развёрнутое представление).
+  factory Product.fromJson(Map<String, dynamic> json) {
+    int? asInt(dynamic v) => v == null ? null : (v as num).toInt();
+    double asDouble(dynamic v) => v == null ? 0 : (v as num).toDouble();
+
+    final category = json['category'] as Map<String, dynamic>?;
+    final supplier = json['supplier'] as Map<String, dynamic>?;
+
+    return Product(
+      id: asInt(json['id']) ?? 0,
+      name: (json['name'] ?? '') as String,
+      sku: (json['sku'] ?? '') as String,
+      price: asDouble(json['price']),
+      weightGr: asInt(json['weightGr']) ?? 0,
+      categoryId: asInt(category?['id']) ?? 0,
+      stockTotal: asInt(json['stockTotal']) ?? 0,
+      stockAvailable: asInt(json['stockAvailable']) ?? 0,
+      deletedAt: json['deletedAt'] == null
+          ? null
+          : DateTime.tryParse(json['deletedAt'] as String),
+      supplierIds: supplier != null && supplier['id'] != null
+          ? [asInt(supplier['id'])!]
+          : const [],
+      categoryName: category?['name'] as String?,
+      supplierNames: supplier != null && supplier['name'] != null
+          ? [supplier['name'] as String]
+          : const [],
+    );
+  }
+
+  /// Сериализация для localStorage (ПР3). Оставляем — данные кэшируются
+  /// в офлайне, пока идёт запрос.
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
@@ -66,22 +116,9 @@ class Product {
     'stockAvailable': stockAvailable,
     'deletedAt': deletedAt?.toIso8601String(),
     'supplierIds': supplierIds,
+    'categoryName': categoryName,
+    'supplierNames': supplierNames,
   };
-
-  factory Product.fromJson(Map<String, dynamic> json) => Product(
-    id: json['id'] as int? ?? 0,
-    name: json['name'] as String? ?? '',
-    sku: json['sku'] as String? ?? '',
-    price: (json['price'] as num?)?.toDouble() ?? 0,
-    weightGr: json['weightGr'] as int? ?? 0,
-    categoryId: json['categoryId'] as int? ?? 0,
-    stockTotal: json['stockTotal'] as int? ?? 0,
-    stockAvailable: json['stockAvailable'] as int? ?? 0,
-    deletedAt: json['deletedAt'] == null
-        ? null
-        : DateTime.tryParse(json['deletedAt'] as String),
-    supplierIds: (json['supplierIds'] as List?)?.cast<int>() ?? const [],
-  );
 
   @override
   bool operator ==(Object other) =>
@@ -90,4 +127,3 @@ class Product {
   @override
   int get hashCode => id.hashCode;
 }
-

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/seed_data.dart';
 import '../models/page_result.dart';
@@ -50,7 +51,9 @@ class PersistentSupplierRepository implements SupplierRepository {
   }
 
   @override
-  Future<PageResult<Supplier>> find(ProductQuery q) async {
+  Future<PageResult<Supplier>> find(ProductQuery q, {
+    CancelToken? cancelToken,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 200));
     var rows = _items.where((s) => q.includeDeleted || !s.isDeleted).toList();
 

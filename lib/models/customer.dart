@@ -5,7 +5,7 @@ class Customer {
   final String fullName;
   final String email;
   final String phone;
-  final DiscountCard? card;   // один-к-одному
+  final DiscountCard? card;
   final DateTime? deletedAt;
 
   const Customer({
@@ -39,6 +39,18 @@ class Customer {
     );
   }
 
+  Map<String, dynamic> toInputJson() => {
+    'fullName': fullName,
+    'email': email,
+    'phone': phone,
+    if (card != null)
+      'card': {
+        'number': card!.number,
+        'discountPercent': card!.discountPercent,
+        'issuedAt': card!.issuedAt.toIso8601String(),
+      },
+  };
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'fullName': fullName,
@@ -49,10 +61,10 @@ class Customer {
   };
 
   factory Customer.fromJson(Map<String, dynamic> json) => Customer(
-    id: json['id'] as int? ?? 0,
-    fullName: json['fullName'] as String? ?? '',
-    email: json['email'] as String? ?? '',
-    phone: json['phone'] as String? ?? '',
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    fullName: (json['fullName'] ?? '') as String,
+    email: (json['email'] ?? '') as String,
+    phone: (json['phone'] ?? '') as String,
     card: json['card'] == null
         ? null
         : DiscountCard.fromJson(json['card'] as Map<String, dynamic>),

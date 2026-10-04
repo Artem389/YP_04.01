@@ -1,5 +1,6 @@
 // lib/repositories/persistent_product_category_repository.dart
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/seed_data.dart';
 import '../models/page_result.dart';
@@ -52,7 +53,9 @@ class PersistentProductCategoryRepository
   }
 
   @override
-  Future<PageResult<ProductCategory>> find(ProductQuery q) async {
+  Future<PageResult<ProductCategory>> find(ProductQuery q, {
+    CancelToken? cancelToken,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 150));
     var rows = _categories
         .where((c) => q.includeDeleted || !c.isDeleted)

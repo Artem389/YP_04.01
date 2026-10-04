@@ -1,8 +1,8 @@
 class Supplier {
   final int id;
   final String name;
-  final String email;
-  final String phone;
+  final String email;   // city
+  final String phone;   // mapped phone
   final DateTime? deletedAt;
 
   const Supplier({
@@ -31,6 +31,12 @@ class Supplier {
     );
   }
 
+  Map<String, dynamic> toInputJson() => {
+    'name': name,
+    'city': email,
+    'phone': phone,
+  };
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
@@ -40,10 +46,10 @@ class Supplier {
   };
 
   factory Supplier.fromJson(Map<String, dynamic> json) => Supplier(
-    id: json['id'] as int? ?? 0,
-    name: json['name'] as String? ?? '',
-    email: json['email'] as String? ?? '',
-    phone: json['phone'] as String? ?? '',
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    name: (json['name'] ?? '') as String,
+    email: (json['city'] ?? '') as String,
+    phone: (json['phone'] ?? '') as String,
     deletedAt: json['deletedAt'] == null
         ? null
         : DateTime.tryParse(json['deletedAt'] as String),

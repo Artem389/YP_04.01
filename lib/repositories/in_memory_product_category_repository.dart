@@ -1,4 +1,6 @@
 // lib/repositories/in_memory_product_category_repository.dart
+import 'package:dio/dio.dart';
+
 import '../data/seed_data.dart';
 import '../models/page_result.dart';
 import '../models/product_category.dart';
@@ -11,7 +13,9 @@ class InMemoryProductCategoryRepository
   int _nextId = seedCategories.length + 1;
 
   @override
-  Future<PageResult<ProductCategory>> find(ProductQuery q) async {
+  Future<PageResult<ProductCategory>> find(ProductQuery q, {
+    CancelToken? cancelToken,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 150));
     var rows = _categories
         .where((c) => q.includeDeleted || !c.isDeleted)

@@ -5,10 +5,10 @@ import 'package:provider/provider.dart';
 
 import '../core/breakpoints.dart';
 import '../models/product.dart';
-import '../models/product_category.dart';
 import '../models/product_query.dart';
 import '../state/entity_list_notifier.dart';
 import '../state/product_list_notifier.dart';
+import '../state/reference_data_notifier.dart';
 import '../widgets/entity_card.dart';
 import '../widgets/entity_table.dart';
 
@@ -30,14 +30,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
     _searchController.text = widget.queryParams['search'] ?? '';
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+
+      // Справочники — из кэша, без повторного запроса при каждом заходе.
+      context.read<ReferenceDataNotifier>().ensureLoaded();
+
       final q = ProductQuery.fromUri(widget.queryParams);
       context.read<ProductListNotifier>().applyQuery(q);
-
-      // Подгружаем категории, если ещё не загружены.
-      final cats = context.read<EntityListNotifier<ProductCategory>>();
-      if (cats.status == LoadStatus.idle) {
-        cats.load();
-      }
     });
   }
 
@@ -85,18 +83,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
     });
   }
 
-  String _categoryName(
-      EntityListNotifier<ProductCategory> c, int categoryId) {
-    for (final cat in c.result.items) {
-      if (cat.id == categoryId) return cat.name;
-    }
-    return '—';
-  }
-
   @override
   Widget build(BuildContext context) {
     final notifier = context.watch<ProductListNotifier>();
-    final categories = context.watch<EntityListNotifier<ProductCategory>>();
+    final refs = context.watch<ReferenceDataNotifier>();
 
     return Scaffold(
       appBar: AppBar(
@@ -124,8 +114,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
       ),
       body: Column(
         children: [
-          _filters(context, notifier, categories),
-          Expanded(child: _body(context, notifier, categories)),
+          _filters(context, notifier, refs),
+          Expanded(child: _body(context, notifier, refs)),
           _pager(context, notifier),
         ],
       ),
@@ -135,7 +125,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget _filters(
       BuildContext context,
       ProductListNotifier n,
-      EntityListNotifier<ProductCategory> c,
+      ReferenceDataNotifier refs,
       ) {
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -169,7 +159,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
               items: [
                 const DropdownMenuItem(value: null, child: Text('Все категории')),
-                for (final cat in c.result.items)
+                for (final cat in refs.categories)
                   DropdownMenuItem(value: cat.id, child: Text(cat.name)),
               ],
               onChanged: (v) => _updateQuery(n.query.copyWith(categoryId: v)),
@@ -226,7 +216,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget _body(
       BuildContext context,
       ProductListNotifier n,
-      EntityListNotifier<ProductCategory> c,
+      ReferenceDataNotifier refs,
       ) {
     switch (n.status) {
       case LoadStatus.idle:
@@ -252,9 +242,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
         }
         return byScreen(
           context,
-          compact: _cardList(context, n, c),
-          medium: _table(context, n, c),
-          expanded: _table(context, n, c),
+          compact: _cardList(context, n, refs),
+          medium: _table(context, n, refs),
+          expanded: _table(context, n, refs),
         );
     }
   }
@@ -262,7 +252,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget _cardList(
       BuildContext context,
       ProductListNotifier n,
-      EntityListNotifier<ProductCategory> c,
+      ReferenceDataNotifier refs,
       ) {
     return ListView.builder(
       padding: const EdgeInsets.all(12),
@@ -274,7 +264,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           title: Text(p.name),
           lines: [
             Text('Артикул: ${p.sku}'),
-            Text('Категория: ${_categoryName(c, p.categoryId)}'),
+            Text('Категория: ${refs.categoryById(p.categoryId)?.name ?? '—'}'),
             Text('Цена: ${p.price.toStringAsFixed(2)} ₽'),
             Text('В наличии: ${p.stockAvailable} / ${p.stockTotal}'),
           ],
@@ -325,7 +315,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget _table(
       BuildContext context,
       ProductListNotifier n,
-      EntityListNotifier<ProductCategory> c,
+      ReferenceDataNotifier refs,
       ) {
     return EntityTable<Product>(
       items: n.result.items,
@@ -353,7 +343,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         TableColumnSpec(label: 'Артикул', build: (p) => Text(p.sku)),
         TableColumnSpec(
           label: 'Категория',
-          build: (p) => Text(_categoryName(c, p.categoryId)),
+          build: (p) => Text(refs.categoryById(p.categoryId)?.name ?? '—'),
         ),
         TableColumnSpec(
           label: 'Цена, ₽',
