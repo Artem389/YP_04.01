@@ -8,18 +8,21 @@ class AuthRepository {
   final TokenStorage _tokens;
   AuthRepository(this._dio, this._tokens);
 
-  Future<void> login(String username, String password) => guard(() async {
-    final response = await _dio.post(
-      '/auth/login',
-      data: {'username': username, 'password': password},
-    );
-    final data = response.data as Map<String, dynamic>;
-    await _tokens.save(
-      accessToken: data['accessToken'] as String,
-      refreshToken: data['refreshToken'] as String,
-      user: data['user'] as Map<String, dynamic>,
-    );
-  });
+  /// Возвращает `{accessToken, refreshToken, user}`.
+  Future<Map<String, dynamic>> login(String username, String password) =>
+      guard(() async {
+        final response = await _dio.post(
+          '/auth/login',
+          data: {'username': username, 'password': password},
+        );
+        final data = response.data as Map<String, dynamic>;
+        await _tokens.save(
+          accessToken: data['accessToken'] as String,
+          refreshToken: data['refreshToken'] as String,
+          user: data['user'] as Map<String, dynamic>,
+        );
+        return data;
+      });
 
   Future<void> register({
     required String username,
@@ -34,6 +37,7 @@ class AuthRepository {
           'email': email,
           'fullName': fullName,
         });
+        // После регистрации сразу входим.
         await login(username, password);
       });
 
@@ -52,12 +56,20 @@ class AuthRepository {
     );
   });
 
+  /// Текущий пользователь. Требует действующего access-токена.
+  Future<Map<String, dynamic>> me() => guard(() async {
+    final response = await _dio.get('/auth/me');
+    return response.data as Map<String, dynamic>;
+  });
+
   Future<void> logout() async {
     final refresh = _tokens.refreshToken;
     if (refresh != null) {
       try {
         await _dio.post('/auth/logout', data: {'refreshToken': refresh});
-      } catch (_) {/* сеть может быть недоступна — не критично */}
+      } catch (_) {
+        // Сеть может быть недоступна — не критично.
+      }
     }
     await _tokens.clear();
   }

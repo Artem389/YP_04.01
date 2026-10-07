@@ -1,5 +1,7 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,9 +20,11 @@ import 'repositories/customer_repository.dart';
 import 'repositories/product_category_repository.dart';
 import 'repositories/product_repository.dart';
 import 'repositories/supplier_repository.dart';
+import 'state/auth_notifier.dart';
 import 'state/entity_list_notifier.dart';
 import 'state/product_list_notifier.dart';
 import 'state/reference_data_notifier.dart';
+import 'widgets/inactivity_watcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,16 +32,14 @@ Future<void> main() async {
 
   final prefs = await SharedPreferences.getInstance();
   final tokens = TokenStorage(prefs);
-  configureRouterAuth(tokens);
 
-  // Собираем Dio с автообновлением токена и логированием.
+  // Заглушка: будет заменена после создания AuthNotifier.
+  AuthNotifier? authRef;
+
   final dio = buildDio(
     tokens: tokens,
     onRefreshToken: () async {
-      final auth = AuthRepository(
-        buildDio(tokens: tokens),
-        tokens,
-      );
+      final auth = AuthRepository(buildDio(tokens: tokens), tokens);
       try {
         await auth.refresh();
         return true;
@@ -45,35 +47,40 @@ Future<void> main() async {
         return false;
       }
     },
+    onTokensRefreshed: () async {
+      await authRef?.onTokensRefreshed();
+    },
     onUnauthorized: () async {
-      await tokens.clear();
+      await authRef?.logout();
     },
   );
+
+  final authApi = AuthRepository(dio, tokens);
+  final auth = AuthNotifier(authApi, tokens);
+  authRef = auth;
+
+  // Восстанавливаем сессию ДО построения дерева.
+  await auth.restore();
 
   runApp(
     MultiProvider(
       providers: [
         Provider<SharedPreferences>.value(value: prefs),
         Provider<TokenStorage>.value(value: tokens),
-        Provider<AuthRepository>(
-          create: (_) => AuthRepository(dio, tokens),
-        ),
+        Provider<Dio>.value(value: dio),
+        Provider<AuthRepository>.value(value: authApi),
+
+        ChangeNotifierProvider<AuthNotifier>.value(value: auth),
 
         // ─── Репозитории ─────────────────────────────────────────────
-        Provider<ProductRepository>(
-          create: (_) => ApiProductRepository(dio),
-        ),
+        Provider<ProductRepository>(create: (_) => ApiProductRepository(dio)),
         Provider<ProductCategoryRepository>(
           create: (_) => ApiProductCategoryRepository(dio),
         ),
-        Provider<SupplierRepository>(
-          create: (_) => ApiSupplierRepository(dio),
-        ),
-        Provider<CustomerRepository>(
-          create: (_) => ApiCustomerRepository(dio),
-        ),
+        Provider<SupplierRepository>(create: (_) => ApiSupplierRepository(dio)),
+        Provider<CustomerRepository>(create: (_) => ApiCustomerRepository(dio)),
 
-        // ─── Справочники (кэш) ──────────────────────────────────────
+        // ─── Справочники ──────────────────────────────────────────────
         ChangeNotifierProvider<ReferenceDataNotifier>(
           create: (ctx) => ReferenceDataNotifier(
             ctx.read<ProductCategoryRepository>(),
@@ -81,7 +88,7 @@ Future<void> main() async {
           )..ensureLoaded(),
         ),
 
-        // ─── Списки сущностей ───────────────────────────────────────
+        // ─── Списки ───────────────────────────────────────────────────
         ChangeNotifierProvider<ProductListNotifier>(
           create: (ctx) => ProductListNotifier(ctx.read<ProductRepository>()),
         ),
@@ -128,13 +135,49 @@ Future<void> main() async {
           ),
         ),
       ],
-      child: const GroceryApp(),
+      child: GroceryApp(auth: auth),
     ),
   );
 }
 
-class GroceryApp extends StatelessWidget {
-  const GroceryApp({super.key});
+class GroceryApp extends StatefulWidget {
+  final AuthNotifier auth;
+  const GroceryApp({super.key, required this.auth});
+
+  @override
+  State<GroceryApp> createState() => _GroceryAppState();
+}
+
+class _GroceryAppState extends State<GroceryApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    _router = buildRouter(widget.auth);
+
+    // Реакция на истечение сессии: показываем диалог.
+    widget.auth.onSessionExpired = (reason) {
+      final ctx = _router.routerDelegate.navigatorKey.currentContext;
+      if (ctx == null || !ctx.mounted) return;
+      showDialog<void>(
+        context: ctx,
+        builder: (_) => AlertDialog(
+          title: const Text('Сессия завершена'),
+          content: Text(reason),
+          actions: [
+            FilledButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _router.go('/login');
+              },
+              child: const Text('Войти заново'),
+            ),
+          ],
+        ),
+      );
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +188,11 @@ class GroceryApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
       ),
-      routerConfig: appRouter,
+      routerConfig: _router,
+      builder: (context, child) {
+        // Оборачиваем всё приложение слушателем активности.
+        return InactivityWatcher(child: child ?? const SizedBox.shrink());
+      },
     );
   }
 }

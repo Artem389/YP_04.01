@@ -8,14 +8,15 @@ import 'config.dart';
 import 'token_storage.dart';
 
 /// Собирает Dio со всеми интерсепторами:
-///
-/// * добавляет заголовок `Authorization`;
-/// * разбирает 4xx в прикладные исключения;
-/// * журналирует запросы в режиме отладки;
-/// * выполняет авто-повтор для идемпотентных методов (GET/HEAD).
+///  * добавляет заголовок `Authorization`;
+///  * на 401 — обновляет токен и повторяет запрос один раз;
+///  * разбирает 4xx в прикладные исключения;
+///  * журналирует запросы в режиме отладки;
+///  * выполняет авто-повтор для идемпотентных методов (GET/HEAD).
 Dio buildDio({
   required TokenStorage tokens,
   Future<bool> Function()? onRefreshToken,
+  Future<void> Function()? onTokensRefreshed,
   Future<void> Function()? onUnauthorized,
 }) {
   final dio = Dio(
@@ -39,8 +40,7 @@ Dio buildDio({
                 error.type == DioExceptionType.connectionTimeout ||
                 error.type == DioExceptionType.receiveTimeout);
 
-        final attempt =
-            (error.requestOptions.extra['__retry'] as int?) ?? 0;
+        final attempt = (error.requestOptions.extra['__retry'] as int?) ?? 0;
 
         if (canRetry && attempt < 3) {
           final delayMs = (pow(2, attempt) * 300).toInt();
@@ -73,15 +73,19 @@ Dio buildDio({
         final status = response.statusCode ?? 0;
 
         // 401 → пробуем обновить токен один раз.
-        if (status == 401 && onRefreshToken != null) {
+        // Исключаем /auth/*, иначе неудачный вход зациклит refresh.
+        final isAuthEndpoint = response.requestOptions.path.contains('/auth/');
+        if (status == 401 && onRefreshToken != null && !isAuthEndpoint) {
           final refreshed = await onRefreshToken();
           if (refreshed) {
             final options = response.requestOptions;
             options.headers['Authorization'] = 'Bearer ${tokens.accessToken}';
             try {
               final retried = await dio.fetch(options);
+              await onTokensRefreshed?.call();
               return handler.resolve(retried);
             } on DioException catch (e) {
+              await onUnauthorized?.call();
               return handler.reject(e, true);
             }
           } else {
@@ -91,10 +95,6 @@ Dio buildDio({
 
         // Коды 4xx попадают сюда, а не в onError — из-за validateStatus.
         if (status >= 400) {
-          // Нельзя бросать исключение из интерсептора: Dio завернёт его
-          // в DioException типа unknown, и наш ValidationException окажется
-          // спрятан внутри поля error. Поэтому отправляем ответ по ветке
-          // ошибок сами, приложив уже разобранное исключение.
           return handler.reject(
             DioException(
               requestOptions: response.requestOptions,
@@ -116,12 +116,6 @@ Dio buildDio({
       InterceptorsWrapper(
         onRequest: (options, handler) {
           debugPrint('[API →] ${options.method} ${options.uri}');
-          if (options.queryParameters.isNotEmpty) {
-            debugPrint('        query: ${options.queryParameters}');
-          }
-          if (options.data != null && options.data is Map) {
-            debugPrint('        body:  ${options.data}');
-          }
           return handler.next(options);
         },
         onResponse: (response, handler) {

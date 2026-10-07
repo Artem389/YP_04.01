@@ -530,6 +530,14 @@ async function handle(req, res, url) {
     if (Object.keys(errors).length) {
       return send(res, 422, { message: 'Ошибка валидации', errors });
     }
+    // Создаём запись покупателя и связываем её с пользователем,
+    // чтобы «только что зарегистрированный» сразу появлялся
+    // на странице «Покупатели».
+    const customerId = push('customers', {
+      fullName: String(body.fullName || username),
+      email: String(body.email || ''),
+      phone: String(body.phone || ''),
+       });
     const id = push('users', {
       username,
       passwordHash: hash(password),
@@ -682,6 +690,13 @@ async function handle(req, res, url) {
     if (id === null && method === 'GET') {
       let rows = db[collection];
       if (q.includeDeleted !== 'true') rows = rows.filter((x) => !x.deletedAt);
+      // Покупатели: показываем только тех, кто зарегистрирован как пользователь.
+      if (collection === 'customers') {
+        const linkedIds = new Set(
+          db.users.filter((u) => u.customerId != null).map((u) => u.customerId),
+        );
+        rows = rows.filter((c) => linkedIds.has(c.id));
+      }
       if (collection === 'sales' && user && user.role === 'client') {
         rows = rows.filter((s) => s.customerId === user.customerId);
       }
@@ -775,7 +790,7 @@ async function handle(req, res, url) {
           // удаление
           if (id !== null && method === 'DELETE') {
       const hard = q.hard === 'true';
-      if (!requireRole(res, user, hard ? 'admin' : 'librarian')) return;
+      if (!requireRole(res, user, hard ? 'admin' : 'manager')) return;
 
       const index = db[collection].findIndex((x) => x.id === id);
       if (index === -1) return fail(res, 404, 'Объект не найден');

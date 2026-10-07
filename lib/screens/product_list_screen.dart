@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../core/breakpoints.dart';
+import '../core/role.dart';
 import '../models/product.dart';
 import '../models/product_query.dart';
+import '../state/auth_notifier.dart';
 import '../state/entity_list_notifier.dart';
 import '../state/product_list_notifier.dart';
 import '../state/reference_data_notifier.dart';
@@ -92,7 +94,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       appBar: AppBar(
         title: const Text('Каталог товаров'),
         actions: [
-          if (notifier.hasSelection) ...[
+          if (notifier.hasSelection && context.watch<AuthNotifier>().has(Role.manager)) ...[
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -254,6 +256,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
       ProductListNotifier n,
       ReferenceDataNotifier refs,
       ) {
+    // Менеджер и выше видят кнопки редактирования/удаления.
+    final canManage = context.watch<AuthNotifier>().has(Role.manager);
     return ListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: n.result.items.length,
@@ -269,8 +273,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
             Text('В наличии: ${p.stockAvailable} / ${p.stockTotal}'),
           ],
           selected: n.selected.contains(p.id),
-          onToggle: () => n.toggleSelection(p.id),
-          actions: [
+          // Отметку тоже прячем: у клиента нет массовых операций.
+          onToggle: canManage ? () => n.toggleSelection(p.id) : null,
+          actions: canManage
+              ? [
             IconButton(
               tooltip: 'Редактировать',
               icon: const Icon(Icons.edit),
@@ -300,13 +306,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 PopupMenuItem(
                   value: 'hard',
                   child: ListTile(
-                    leading: Icon(Icons.delete_forever, color: Colors.red),
+                    leading:
+                    Icon(Icons.delete_forever, color: Colors.red),
                     title: Text('Удалить навсегда'),
                   ),
                 ),
               ],
             ),
-          ],
+          ]
+              : const [],
         );
       },
     );
@@ -317,11 +325,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
       ProductListNotifier n,
       ReferenceDataNotifier refs,
       ) {
+    final canManage = context.watch<AuthNotifier>().has(Role.manager);
+
     return EntityTable<Product>(
       items: n.result.items,
       idOf: (p) => p.id,
       selected: n.selected,
-      onToggleSelect: n.toggleSelection,
+      // Без прав на управление чекбоксы не нужны.
+      onToggleSelect: canManage ? n.toggleSelection : null,
       sortField: n.query.sortField,
       sortAscending: n.query.sortAscending,
       onSort: (field) {
@@ -364,7 +375,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
           build: (p) => Text('${p.stockAvailable} / ${p.stockTotal}'),
         ),
       ],
-      actions: (p) => [
+      actions: canManage
+          ? (p) => [
         IconButton(
           tooltip: 'Редактировать',
           icon: const Icon(Icons.edit),
@@ -394,13 +406,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
             PopupMenuItem(
               value: 'hard',
               child: ListTile(
-                leading: Icon(Icons.delete_forever, color: Colors.red),
+                leading:
+                Icon(Icons.delete_forever, color: Colors.red),
                 title: Text('Удалить навсегда'),
               ),
             ),
           ],
         ),
-      ],
+      ]
+          : null,
     );
   }
 
