@@ -100,6 +100,11 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'На главную',
+          onPressed: () => context.go('/'),
+        ),
         title: const Text('Категории'),
         actions: [
           if (n.hasSelection) ...[

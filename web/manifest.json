@@ -1,6 +1,6 @@
 {
-    "name": "flutter_project_web",
-    "short_name": "flutter_project_web",
+    "name": "Продуктовый магазин",
+    "short_name": "Продуктовый магазин",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

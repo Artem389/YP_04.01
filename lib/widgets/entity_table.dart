@@ -54,11 +54,17 @@ class EntityTable<T> extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            minWidth: MediaQuery.sizeOf(context).width,
+            // Ширина таблицы = max(ширина окна, минимальная комфортная ширина).
+            // Минимум подобран так, чтобы колонки не сжимались в кашу.
+            minWidth: MediaQuery.sizeOf(context).width < 900
+                ? 900
+                : MediaQuery.sizeOf(context).width,
           ),
           child: DataTable(
             sortColumnIndex: _sortIndex(),
             sortAscending: sortAscending,
+            columnSpacing: 24,
+            horizontalMargin: 12,
             // Колонку под штатный чекбокс DataRow НЕ добавляем — её рисует
             // сам DataRow.onSelectChanged. Пользовательские колонки идут
             // с индекса 0, поэтому sortColumnIndex = i.

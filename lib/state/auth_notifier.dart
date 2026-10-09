@@ -83,6 +83,12 @@ class AuthNotifier extends ChangeNotifier {
   /// Есть ли у пользователя роль не ниже указанной.
   bool has(Role min) => _user != null && _user!.role.allows(min);
 
+  /// Только для тестов: подставить пользователя без обращения к сети.
+  @visibleForTesting
+  void debugSetUser(AppUser? user) {
+    _user = user;
+    notifyListeners();
+  }
   // ─────────────────────────── восстановление сессии ─────────────────────
 
   /// Вызывается один раз при старте приложения.

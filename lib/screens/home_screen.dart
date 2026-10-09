@@ -70,6 +70,13 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   _MenuButton(
+                    icon: Icons.bar_chart,
+                    label: 'Отчёт по категориям',
+                    onPressed: () => context.go('/reports/categories'),
+                  ),
+
+                  const SizedBox(height: 16),
+                  _MenuButton(
                     icon: Icons.local_shipping,
                     label: 'Поставщики',
                     onPressed: () => context.go('/suppliers'),
@@ -80,6 +87,15 @@ class HomeScreen extends StatelessWidget {
                     label: 'Покупатели',
                     onPressed: () => context.go('/customers'),
                   ),
+                  const SizedBox(height: 16),
+                  if (auth.has(Role.manager)) ...[
+                    _MenuButton(
+                      icon: Icons.local_offer,
+                      label: 'Акции',
+                      onPressed: () => context.go('/promotions'),
+                    ),
+
+                  ],
                   const SizedBox(height: 16),
                 ],
 

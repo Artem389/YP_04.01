@@ -5,8 +5,6 @@ import 'package:provider/provider.dart';
 import '../core/api_exceptions.dart';
 import '../core/validators.dart';
 import '../models/product.dart';
-import '../models/product_category.dart';
-import '../models/supplier.dart';
 import '../repositories/product_repository.dart';
 import '../state/product_list_notifier.dart';
 import '../state/reference_data_notifier.dart';

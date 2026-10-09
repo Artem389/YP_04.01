@@ -73,6 +73,7 @@ function seed() {
     cards: [],
     sales: [],
     users: [],
+    promotions: [],
     refreshTokens: new Set(),
   };
 
@@ -163,6 +164,29 @@ function seed() {
   push('users', { username: 'admin',     passwordHash: hash('admin123'),     fullName: 'Администратор', email: 'admin@shop.local',    role: 'admin',     customerId: null });
   push('users', { username: 'manager', passwordHash: hash('manager123'), fullName: 'Петрова А. С.', email: 'petrova@shop.local',  role: 'manager', customerId: null });
   push('users', { username: 'client',    passwordHash: hash('client123'),    fullName: 'Смирнов П. А.', email: 'smirnov@example.com', role: 'client',    customerId: 1 });
+
+  // Акции (many-to-many к товарам и many-to-one к категории)
+  push('promotions', {
+    name: 'Молочная неделя',
+    description: 'Скидка 10% на всю молочную продукцию',
+    discountPercent: 10,
+    categoryId: dairy,
+    productIds: [],
+    minTotal: 0,
+    startsAt: iso(2026, 1, 1),
+    endsAt: iso(2027, 1, 1),
+  });
+  push('promotions', {
+    name: 'Сладкий час',
+    description: 'Скидка 15% на шоколад и печенье',
+    discountPercent: 15,
+    categoryId: null,
+    productIds: [19, 20], // SWE-001, SWE-002
+    minTotal: 0,
+    startsAt: iso(2026, 1, 1),
+    endsAt: iso(2027, 1, 1),
+  });
+
 }
 
 function push(collection, obj) {
@@ -254,6 +278,9 @@ function expandSale(s) {
     customer: customer ? { id: customer.id, fullName: customer.fullName } : null,
     product: product ? { id: product.id, name: product.name } : null,
     quantity: s.quantity,
+    unitPrice: s.unitPrice,
+    subtotal: s.subtotal,
+    total: s.total,
     soldAt: s.soldAt,
     closedAt: s.closedAt,
     status: s.closedAt ? 'closed' : 'active',
@@ -278,6 +305,10 @@ const EXPANDERS = {
   sales: expandSale,
   categories: (c) => c,
   suppliers: (s) => s,
+  promotions: (p) => ({
+    ...p,
+    category: p.categoryId ? slimCategory(p.categoryId) : null,
+  }),
 };
 
 // ─────────────────────────── общие операции ───────────────────────────
@@ -288,6 +319,7 @@ function searchableText(collection, item) {
     case 'categories':return [item.name, item.description].join(' ');
     case 'suppliers': return [item.name, item.city, item.phone].join(' ');
     case 'customers': return [item.fullName, item.email, item.phone].join(' ');
+    case 'promotions': return [item.name, item.description].join(' ');
     default: return '';
   }
 }
@@ -425,6 +457,19 @@ function validate(collection, body, id = null) {
     }
   }
 
+    if (collection === 'promotions') {
+      if (!str(body.name)) e.name = 'Укажите название акции';
+      const d = Number(body.discountPercent);
+      if (!Number.isInteger(d) || d < 1 || d > 90) {
+        e.discountPercent = 'Скидка от 1 до 90 %';
+      }
+      if (!body.startsAt) e.startsAt = 'Укажите дату начала';
+      if (!body.endsAt) e.endsAt = 'Укажите дату окончания';
+      if (body.startsAt && body.endsAt && body.startsAt >= body.endsAt) {
+        e.endsAt = 'Окончание должно быть позже начала';
+      }
+    }
+
   return e;
 }
 
@@ -490,7 +535,7 @@ function requireRole(res, user, minRole) {
   return true;
 }
 
-const COLLECTIONS = ['products', 'categories', 'suppliers', 'customers', 'sales'];
+const COLLECTIONS = ['products', 'categories', 'suppliers', 'customers', 'sales', 'promotions'];
 
 // ─────────────────────────────── маршруты ───────────────────────────────
 
@@ -607,9 +652,21 @@ async function handle(req, res, url) {
 
   // ── продажи ──
   if (path === '/api/sales' && method === 'POST') {
-    if (!requireRole(res, user, 'manager')) return;
+    if (!user) return fail(res, 401, 'Требуется аутентификация');
+
     const body = await readBody(req);
     if (!body) return fail(res, 400, 'Тело запроса не является корректным JSON');
+
+    // Покупатель оформляет продажу только на себя.
+    let customerId = Number(body.customerId);
+    if (user.role === 'client') {
+      if (user.customerId == null) {
+        return fail(res, 403, 'Учётная запись не привязана к покупателю');
+      }
+      customerId = user.customerId;
+    } else if (!requireRole(res, user, 'manager')) {
+      return;
+    }
 
     const errors = {};
     const customer = db.customers.find((c) => c.id === Number(body.customerId) && !c.deletedAt);
@@ -624,15 +681,28 @@ async function handle(req, res, url) {
     if (product.stockAvailable < qty) {
       return fail(res, 409, 'Недостаточно товара на складе');
     }
-    const id = push('sales', {
-      customerId: customer.id,
-      productId: product.id,
-      quantity: qty,
-      soldAt: new Date().toISOString(),
-      closedAt: null,
-    });
-    product.stockAvailable -= qty;
-    return send(res, 201, expandSale(db.sales.find((s) => s.id === id)));
+        const unit = product.price;
+        const subtotal = unit * qty;
+        const card = db.cards.find(
+          (c) => c.customerId === customer.id && !c.deletedAt,
+        );
+        // Простая логика: скидка карты + НДС 20 %. Совпадает с SaleCalculator.
+        const cardPercent = card ? card.discountPercent : 0;
+        const afterDiscount = subtotal * (1 - cardPercent / 100);
+        const total = Math.round(afterDiscount * 1.2 * 100) / 100;
+
+        const id = push('sales', {
+          customerId: customer.id,
+          productId: product.id,
+          quantity: qty,
+          unitPrice: unit,
+          subtotal: Math.round(subtotal * 100) / 100,
+          total,
+          soldAt: new Date().toISOString(),
+          closedAt: null,
+        });
+        product.stockAvailable -= qty;
+        return send(res, 201, expandSale(db.sales.find((s) => s.id === id)));
   }
 
   let m = path.match(/^\/api\/sales\/(\d+)\/close$/);
@@ -858,6 +928,19 @@ function normalize(collection, body) {
       }
       return result;
     }
+        case 'promotions':
+          return {
+            name: str(body.name),
+            description: str(body.description),
+            discountPercent: num(body.discountPercent) ?? 0,
+            categoryId: num(body.categoryId),
+            productIds: Array.isArray(body.productIds)
+              ? body.productIds.map(Number)
+              : [],
+            minTotal: num(body.minTotal) ?? 0,
+            startsAt: str(body.startsAt),
+            endsAt: str(body.endsAt),
+          };
     default:
       return { ...body };
   }

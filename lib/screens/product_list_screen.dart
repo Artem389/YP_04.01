@@ -26,6 +26,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
   final _searchController = TextEditingController();
   Timer? _debounce;
 
+  // /// Продажу оформляет только покупатель, не менеджер.
+  // bool get _isClientOnly {
+  //   final auth = context.watch<AuthNotifier>();
+  //   return auth.has(Role.client) && !auth.has(Role.manager);
+  // }
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +98,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'На главную',
+          onPressed: () => context.go('/'),
+        ),
         title: const Text('Каталог товаров'),
         actions: [
           if (notifier.hasSelection && context.watch<AuthNotifier>().has(Role.manager)) ...[
@@ -107,11 +118,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
               onPressed: () => _confirmDeleteSelected(context),
             ),
           ],
-          IconButton(
-            tooltip: 'Добавить товар',
-            icon: const Icon(Icons.add),
-            onPressed: () => context.go('/products/new'),
-          ),
+          if (context.watch<AuthNotifier>().has(Role.manager))
+            IconButton(
+              tooltip: 'Добавить товар',
+              icon: const Icon(Icons.add),
+              onPressed: () => context.go('/products/new'),
+            ),
         ],
       ),
       body: Column(
@@ -256,8 +268,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
       ProductListNotifier n,
       ReferenceDataNotifier refs,
       ) {
+    final auth = context.watch<AuthNotifier>();
     // Менеджер и выше видят кнопки редактирования/удаления.
     final canManage = context.watch<AuthNotifier>().has(Role.manager);
+    final isClientOnly = auth.user?.role == Role.client;
+
     return ListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: n.result.items.length,
@@ -275,46 +290,54 @@ class _ProductListScreenState extends State<ProductListScreen> {
           selected: n.selected.contains(p.id),
           // Отметку тоже прячем: у клиента нет массовых операций.
           onToggle: canManage ? () => n.toggleSelection(p.id) : null,
-          actions: canManage
-              ? [
-            IconButton(
-              tooltip: 'Редактировать',
-              icon: const Icon(Icons.edit),
-              onPressed: () => context.go('/products/${p.id}/edit'),
-            ),
-            if (p.isDeleted)
+          actions: [
+            // Корзина — только для покупателя, вне общего условия canManage.
+            if (isClientOnly && p.stockAvailable > 0)
               IconButton(
-                tooltip: 'Восстановить',
-                icon: const Icon(Icons.restore),
-                onPressed: () => n.restore(p.id),
-              )
-            else
-              IconButton(
-                tooltip: 'Удалить',
-                icon: const Icon(Icons.delete),
-                onPressed: () => _confirmDelete(context, p.id),
+                tooltip: 'Оформить покупку',
+                icon: const Icon(Icons.shopping_cart_checkout),
+                onPressed: () => context.go('/products/${p.id}/sell'),
               ),
-            PopupMenuButton<String>(
-              tooltip: 'Ещё',
-              icon: const Icon(Icons.more_vert),
-              onSelected: (value) async {
-                if (value == 'hard') {
-                  await _confirmHardDelete(context, p);
-                }
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'hard',
-                  child: ListTile(
-                    leading:
-                    Icon(Icons.delete_forever, color: Colors.red),
-                    title: Text('Удалить навсегда'),
-                  ),
+            // Остальные кнопки — только для manager+.
+            if (canManage) ...[
+              IconButton(
+                tooltip: 'Редактировать',
+                icon: const Icon(Icons.edit),
+                onPressed: () => context.go('/products/${p.id}/edit'),
+              ),
+              if (p.isDeleted)
+                IconButton(
+                  tooltip: 'Восстановить',
+                  icon: const Icon(Icons.restore),
+                  onPressed: () => n.restore(p.id),
+                )
+              else
+                IconButton(
+                  tooltip: 'Удалить',
+                  icon: const Icon(Icons.delete),
+                  onPressed: () => _confirmDelete(context, p.id),
                 ),
-              ],
-            ),
-          ]
-              : const [],
+              PopupMenuButton<String>(
+                tooltip: 'Ещё',
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) async {
+                  if (value == 'hard') {
+                    await _confirmHardDelete(context, p);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'hard',
+                    child: ListTile(
+                      leading: Icon(Icons.delete_forever, color: Colors.red),
+                      title: Text('Удалить навсегда'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+              // : const [],
         );
       },
     );
@@ -325,7 +348,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
       ProductListNotifier n,
       ReferenceDataNotifier refs,
       ) {
+    final auth = context.watch<AuthNotifier>();
     final canManage = context.watch<AuthNotifier>().has(Role.manager);
+    final isClientOnly = auth.user?.role == Role.client;
 
     return EntityTable<Product>(
       items: n.result.items,
@@ -375,46 +400,52 @@ class _ProductListScreenState extends State<ProductListScreen> {
           build: (p) => Text('${p.stockAvailable} / ${p.stockTotal}'),
         ),
       ],
-      actions: canManage
-          ? (p) => [
-        IconButton(
-          tooltip: 'Редактировать',
-          icon: const Icon(Icons.edit),
-          onPressed: () => context.go('/products/${p.id}/edit'),
-        ),
-        if (p.isDeleted)
+      actions: (p) => [
+        if (isClientOnly && p.stockAvailable > 0)
           IconButton(
-            tooltip: 'Восстановить',
-            icon: const Icon(Icons.restore),
-            onPressed: () => n.restore(p.id),
-          )
-        else
-          IconButton(
-            tooltip: 'Удалить',
-            icon: const Icon(Icons.delete),
-            onPressed: () => _confirmDelete(context, p.id),
+            tooltip: 'Оформить покупку',
+            icon: const Icon(Icons.shopping_cart_checkout),
+            onPressed: () => context.go('/products/${p.id}/sell'),
           ),
-        PopupMenuButton<String>(
-          tooltip: 'Ещё',
-          icon: const Icon(Icons.more_vert),
-          onSelected: (value) async {
-            if (value == 'hard') {
-              await _confirmHardDelete(context, p);
-            }
-          },
-          itemBuilder: (_) => const [
-            PopupMenuItem(
-              value: 'hard',
-              child: ListTile(
-                leading:
-                Icon(Icons.delete_forever, color: Colors.red),
-                title: Text('Удалить навсегда'),
-              ),
+        if (canManage) ...[
+          IconButton(
+            tooltip: 'Редактировать',
+            icon: const Icon(Icons.edit),
+            onPressed: () => context.go('/products/${p.id}/edit'),
+          ),
+          if (p.isDeleted)
+            IconButton(
+              tooltip: 'Восстановить',
+              icon: const Icon(Icons.restore),
+              onPressed: () => n.restore(p.id),
+            )
+          else
+            IconButton(
+              tooltip: 'Удалить',
+              icon: const Icon(Icons.delete),
+              onPressed: () => _confirmDelete(context, p.id),
             ),
-          ],
-        ),
-      ]
-          : null,
+          PopupMenuButton<String>(
+            tooltip: 'Ещё',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) async {
+              if (value == 'hard') {
+                await _confirmHardDelete(context, p);
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'hard',
+                child: ListTile(
+                  leading: Icon(Icons.delete_forever, color: Colors.red),
+                  title: Text('Удалить навсегда'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+          // : null,
     );
   }
 

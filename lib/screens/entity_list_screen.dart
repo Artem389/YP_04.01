@@ -107,6 +107,11 @@ class _EntityListScreenState<T> extends State<EntityListScreen<T>> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'На главную',
+          onPressed: () => context.go('/'),
+        ),
         title: Text(widget.title),
         actions: [
           if (notifier.hasSelection) ...[

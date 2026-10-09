@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../core/api_exceptions.dart';
 import '../core/role.dart';
-import '../state/auth_notifier.dart';
 
 /// Список пользователей. Доступен только администратору.
 class AdminUsersScreen extends StatefulWidget {

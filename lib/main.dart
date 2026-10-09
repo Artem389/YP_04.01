@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_project_web/repositories/api_sale_repository.dart';
+import 'package:flutter_project_web/repositories/sale_repository.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -10,15 +12,18 @@ import 'core/router.dart';
 import 'core/token_storage.dart';
 import 'models/customer.dart';
 import 'models/product_category.dart';
+import 'models/promotion.dart';
 import 'models/supplier.dart';
 import 'repositories/api_customer_repository.dart';
 import 'repositories/api_product_category_repository.dart';
 import 'repositories/api_product_repository.dart';
+import 'repositories/api_promotion_repository.dart';
 import 'repositories/api_supplier_repository.dart';
 import 'repositories/auth_repository.dart';
 import 'repositories/customer_repository.dart';
 import 'repositories/product_category_repository.dart';
 import 'repositories/product_repository.dart';
+import 'repositories/promotion_repository.dart';
 import 'repositories/supplier_repository.dart';
 import 'state/auth_notifier.dart';
 import 'state/entity_list_notifier.dart';
@@ -33,7 +38,6 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final tokens = TokenStorage(prefs);
 
-  // Заглушка: будет заменена после создания AuthNotifier.
   AuthNotifier? authRef;
 
   final dio = buildDio(
@@ -59,7 +63,6 @@ Future<void> main() async {
   final auth = AuthNotifier(authApi, tokens);
   authRef = auth;
 
-  // Восстанавливаем сессию ДО построения дерева.
   await auth.restore();
 
   runApp(
@@ -69,18 +72,20 @@ Future<void> main() async {
         Provider<TokenStorage>.value(value: tokens),
         Provider<Dio>.value(value: dio),
         Provider<AuthRepository>.value(value: authApi),
+        Provider<SaleRepository>(create: (_) => ApiSaleRepository(dio)),
 
         ChangeNotifierProvider<AuthNotifier>.value(value: auth),
 
-        // ─── Репозитории ─────────────────────────────────────────────
         Provider<ProductRepository>(create: (_) => ApiProductRepository(dio)),
         Provider<ProductCategoryRepository>(
           create: (_) => ApiProductCategoryRepository(dio),
         ),
         Provider<SupplierRepository>(create: (_) => ApiSupplierRepository(dio)),
         Provider<CustomerRepository>(create: (_) => ApiCustomerRepository(dio)),
+        Provider<PromotionRepository>(
+          create: (_) => ApiPromotionRepository(dio),
+        ),
 
-        // ─── Справочники ──────────────────────────────────────────────
         ChangeNotifierProvider<ReferenceDataNotifier>(
           create: (ctx) => ReferenceDataNotifier(
             ctx.read<ProductCategoryRepository>(),
@@ -88,10 +93,10 @@ Future<void> main() async {
           )..ensureLoaded(),
         ),
 
-        // ─── Списки ───────────────────────────────────────────────────
         ChangeNotifierProvider<ProductListNotifier>(
           create: (ctx) => ProductListNotifier(ctx.read<ProductRepository>()),
         ),
+
         ChangeNotifierProvider<EntityListNotifier<ProductCategory>>(
           create: (ctx) => EntityListNotifier<ProductCategory>(
             fetcher: ctx.read<ProductCategoryRepository>().find,
@@ -134,6 +139,20 @@ Future<void> main() async {
             },
           ),
         ),
+        ChangeNotifierProvider<EntityListNotifier<Promotion>>(
+          create: (ctx) => EntityListNotifier<Promotion>(
+            fetcher: ctx.read<PromotionRepository>().find,
+            deleteMany: (ids) async {
+              var count = 0;
+              final repo = ctx.read<PromotionRepository>();
+              for (final id in ids) {
+                await repo.softDelete(id);
+                count++;
+              }
+              return count;
+            },
+          ),
+        ),
       ],
       child: GroceryApp(auth: auth),
     ),
@@ -155,8 +174,6 @@ class _GroceryAppState extends State<GroceryApp> {
   void initState() {
     super.initState();
     _router = buildRouter(widget.auth);
-
-    // Реакция на истечение сессии: показываем диалог.
     widget.auth.onSessionExpired = (reason) {
       final ctx = _router.routerDelegate.navigatorKey.currentContext;
       if (ctx == null || !ctx.mounted) return;
@@ -190,9 +207,33 @@ class _GroceryAppState extends State<GroceryApp> {
       ),
       routerConfig: _router,
       builder: (context, child) {
-        // Оборачиваем всё приложение слушателем активности.
-        return InactivityWatcher(child: child ?? const SizedBox.shrink());
+        // Пока роутер не отрисовал первый экран, показываем заглушку.
+        // Это убирает белый экран при холодной загрузке.
+        return InactivityWatcher(
+          child: child ?? _StartupPlaceholder(),
+        );
       },
+    );
+  }
+}
+
+class _StartupPlaceholder extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Продуктовый магазин',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            SizedBox(height: 16),
+            CircularProgressIndicator(),
+          ],
+        ),
+      ),
     );
   }
 }
