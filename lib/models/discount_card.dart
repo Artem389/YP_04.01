@@ -30,7 +30,7 @@ class DiscountCard {
   factory DiscountCard.fromJson(Map<String, dynamic> json) => DiscountCard(
     number: json['number'] as String? ?? '',
     discountPercent: json['discountPercent'] as int? ?? 0,
-    issuedAt: DateTime.tryParse(json['issuedAt'] as String? ?? '') ??
-        DateTime.now(),
+    issuedAt:
+        DateTime.tryParse(json['issuedAt'] as String? ?? '') ?? DateTime.now(),
   );
 }

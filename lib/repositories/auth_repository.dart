@@ -29,17 +29,19 @@ class AuthRepository {
     required String password,
     required String email,
     required String fullName,
-  }) =>
-      guard(() async {
-        await _dio.post('/auth/register', data: {
-          'username': username,
-          'password': password,
-          'email': email,
-          'fullName': fullName,
-        });
-        // После регистрации сразу входим.
-        await login(username, password);
-      });
+  }) => guard(() async {
+    await _dio.post(
+      '/auth/register',
+      data: {
+        'username': username,
+        'password': password,
+        'email': email,
+        'fullName': fullName,
+      },
+    );
+    // После регистрации сразу входим.
+    await login(username, password);
+  });
 
   Future<void> refresh() => guard(() async {
     final refresh = _tokens.refreshToken;

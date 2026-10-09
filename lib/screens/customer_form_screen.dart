@@ -49,8 +49,9 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   }
 
   Future<void> _load() async {
-    final c =
-    await context.read<CustomerRepository>().findById(widget.customerId!);
+    final c = await context.read<CustomerRepository>().findById(
+      widget.customerId!,
+    );
     if (!mounted) return;
     if (c == null) {
       _saved = true;
@@ -107,18 +108,21 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       phone: _phone.text.trim(),
       card: _hasCard
           ? DiscountCard(
-        number: _cardNumber.text.trim(),
-        discountPercent: int.parse(_cardDiscount.text),
-        issuedAt: _original?.card?.issuedAt ?? DateTime.now(),
-      )
+              number: _cardNumber.text.trim(),
+              discountPercent: int.parse(_cardDiscount.text),
+              issuedAt: _original?.card?.issuedAt ?? DateTime.now(),
+            )
           : null,
     );
 
-    final exists =
-    await repo.emailExists(draft.email, exceptId: widget.customerId);
+    final exists = await repo.emailExists(
+      draft.email,
+      exceptId: widget.customerId,
+    );
     if (exists) {
-      setState(() =>
-      _serverErrors = {'email': 'Покупатель с таким email уже есть'});
+      setState(
+        () => _serverErrors = {'email': 'Покупатель с таким email уже есть'},
+      );
       _formKey.currentState!.validate();
       return;
     }
@@ -204,7 +208,9 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
             tooltip: 'Назад',
             onPressed: () => _handleBack(context),
           ),
-          title: Text(isEdit ? 'Редактирование покупателя' : 'Новый покупатель'),
+          title: Text(
+            isEdit ? 'Редактирование покупателя' : 'Новый покупатель',
+          ),
         ),
         body: EntityForm(
           formKey: _formKey,
@@ -217,10 +223,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
               key: 'fullName',
               label: 'ФИО',
               controller: _fullName,
-              validator: V.combine([
-                V.required(),
-                V.length(min: 3, max: 120),
-              ]),
+              validator: V.combine([V.required(), V.length(min: 3, max: 120)]),
             ),
             FormFieldSpec(
               key: 'email',
@@ -230,7 +233,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
               validator: V.combine([
                 V.required(),
                 V.email(),
-                    (v) => _serverErrors['email'],
+                (v) => _serverErrors['email'],
               ]),
             ),
             FormFieldSpec(
@@ -238,10 +241,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
               label: 'Телефон',
               controller: _phone,
               keyboardType: TextInputType.phone,
-              validator: V.combine([
-                V.required(),
-                V.length(min: 5, max: 20),
-              ]),
+              validator: V.combine([V.required(), V.length(min: 5, max: 20)]),
             ),
           ],
           extraFields: [
@@ -258,10 +258,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   labelText: 'Номер карты',
                   border: OutlineInputBorder(),
                 ),
-                validator: V.combine([
-                  V.required(),
-                  V.length(min: 4, max: 20),
-                ]),
+                validator: V.combine([V.required(), V.length(min: 4, max: 20)]),
               ),
               const SizedBox(height: 16),
               TextFormField(

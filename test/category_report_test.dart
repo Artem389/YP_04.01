@@ -58,9 +58,7 @@ void main() {
 
     test('удалённые товары не учитываются', () {
       final rows = CategoryReport.build(
-        categories: const [
-          ProductCategory(id: 1, name: 'X', description: ''),
-        ],
+        categories: const [ProductCategory(id: 1, name: 'X', description: '')],
         products: [
           Product(
             id: 1,

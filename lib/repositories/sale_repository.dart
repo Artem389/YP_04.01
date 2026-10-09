@@ -5,10 +5,7 @@ import '../models/product_query.dart';
 import '../models/sale.dart';
 
 abstract interface class SaleRepository {
-  Future<PageResult<Sale>> find(
-      ProductQuery query, {
-        CancelToken? cancelToken,
-      });
+  Future<PageResult<Sale>> find(ProductQuery query, {CancelToken? cancelToken});
   Future<Sale> create({
     required int customerId,
     required int productId,

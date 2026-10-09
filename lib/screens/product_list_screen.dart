@@ -105,7 +105,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
         ),
         title: const Text('Каталог товаров'),
         actions: [
-          if (notifier.hasSelection && context.watch<AuthNotifier>().has(Role.manager)) ...[
+          if (notifier.hasSelection &&
+              context.watch<AuthNotifier>().has(Role.manager)) ...[
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -137,10 +138,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Widget _filters(
-      BuildContext context,
-      ProductListNotifier n,
-      ReferenceDataNotifier refs,
-      ) {
+    BuildContext context,
+    ProductListNotifier n,
+    ReferenceDataNotifier refs,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Wrap(
@@ -172,7 +173,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 isDense: true,
               ),
               items: [
-                const DropdownMenuItem(value: null, child: Text('Все категории')),
+                const DropdownMenuItem(
+                  value: null,
+                  child: Text('Все категории'),
+                ),
                 for (final cat in refs.categories)
                   DropdownMenuItem(value: cat.id, child: Text(cat.name)),
               ],
@@ -188,11 +192,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
-              keyboardType:
-              const TextInputType.numberWithOptions(decimal: true),
-              onFieldSubmitted: (v) => _updateQuery(
-                n.query.copyWith(priceFrom: double.tryParse(v)),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
               ),
+              onFieldSubmitted: (v) =>
+                  _updateQuery(n.query.copyWith(priceFrom: double.tryParse(v))),
             ),
           ),
           SizedBox(
@@ -204,11 +208,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
-              keyboardType:
-              const TextInputType.numberWithOptions(decimal: true),
-              onFieldSubmitted: (v) => _updateQuery(
-                n.query.copyWith(priceTo: double.tryParse(v)),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
               ),
+              onFieldSubmitted: (v) =>
+                  _updateQuery(n.query.copyWith(priceTo: double.tryParse(v))),
             ),
           ),
           FilterChip(
@@ -228,10 +232,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Widget _body(
-      BuildContext context,
-      ProductListNotifier n,
-      ReferenceDataNotifier refs,
-      ) {
+    BuildContext context,
+    ProductListNotifier n,
+    ReferenceDataNotifier refs,
+  ) {
     switch (n.status) {
       case LoadStatus.idle:
       case LoadStatus.loading:
@@ -264,10 +268,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Widget _cardList(
-      BuildContext context,
-      ProductListNotifier n,
-      ReferenceDataNotifier refs,
-      ) {
+    BuildContext context,
+    ProductListNotifier n,
+    ReferenceDataNotifier refs,
+  ) {
     final auth = context.watch<AuthNotifier>();
     // Менеджер и выше видят кнопки редактирования/удаления.
     final canManage = context.watch<AuthNotifier>().has(Role.manager);
@@ -337,17 +341,17 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
             ],
           ],
-              // : const [],
+          // : const [],
         );
       },
     );
   }
 
   Widget _table(
-      BuildContext context,
-      ProductListNotifier n,
-      ReferenceDataNotifier refs,
-      ) {
+    BuildContext context,
+    ProductListNotifier n,
+    ReferenceDataNotifier refs,
+  ) {
     final auth = context.watch<AuthNotifier>();
     final canManage = context.watch<AuthNotifier>().has(Role.manager);
     final isClientOnly = auth.user?.role == Role.client;
@@ -445,7 +449,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
         ],
       ],
-          // : null,
+      // : null,
     );
   }
 
@@ -473,16 +477,17 @@ class _ProductListScreenState extends State<ProductListScreen> {
           IconButton(
             icon: const Icon(Icons.first_page),
             onPressed: r.hasPrevious
-                ? () => _updateQuery(n.query.copyWith(page: 1), resetPage: false)
+                ? () =>
+                      _updateQuery(n.query.copyWith(page: 1), resetPage: false)
                 : null,
           ),
           IconButton(
             icon: const Icon(Icons.chevron_left),
             onPressed: r.hasPrevious
                 ? () => _updateQuery(
-              n.query.copyWith(page: n.query.page - 1),
-              resetPage: false,
-            )
+                    n.query.copyWith(page: n.query.page - 1),
+                    resetPage: false,
+                  )
                 : null,
           ),
           Text('${r.page} / ${r.totalPages}'),
@@ -490,18 +495,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
             icon: const Icon(Icons.chevron_right),
             onPressed: r.hasNext
                 ? () => _updateQuery(
-              n.query.copyWith(page: n.query.page + 1),
-              resetPage: false,
-            )
+                    n.query.copyWith(page: n.query.page + 1),
+                    resetPage: false,
+                  )
                 : null,
           ),
           IconButton(
             icon: const Icon(Icons.last_page),
             onPressed: r.hasNext
                 ? () => _updateQuery(
-              n.query.copyWith(page: r.totalPages),
-              resetPage: false,
-            )
+                    n.query.copyWith(page: r.totalPages),
+                    resetPage: false,
+                  )
                 : null,
           ),
         ],
@@ -539,7 +544,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         title: const Text('Удалить навсегда?'),
         content: Text(
           'Товар «${p.name}» будет удалён физически. '
-              'Восстановление невозможно.',
+          'Восстановление невозможно.',
         ),
         actions: [
           TextButton(

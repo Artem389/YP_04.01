@@ -63,8 +63,9 @@ class _SellProductScreenState extends State<SellProductScreen> {
 
       // Покупателей тянем все — у нас их немного, зато сразу видно,
       // к кому применить скидку карты.
-      final customersPage =
-      await customerRepo.find(const ProductQuery(size: 500));
+      final customersPage = await customerRepo.find(
+        const ProductQuery(size: 500),
+      );
       final promos = await promotionRepo.findAll();
 
       if (!mounted) return;
@@ -90,7 +91,7 @@ class _SellProductScreenState extends State<SellProductScreen> {
     if (p == null) return;
     final qty = int.tryParse(_quantity.text) ?? 1;
     final customer = _customers.firstWhere(
-          (c) => c.id == _customerId,
+      (c) => c.id == _customerId,
       orElse: () => _customers.isEmpty
           ? Customer(id: 0, fullName: '', email: '', phone: '')
           : _customers.first,
@@ -111,11 +112,7 @@ class _SellProductScreenState extends State<SellProductScreen> {
 
     if (p.stockAvailable < int.parse(_quantity.text)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'На складе только ${p.stockAvailable} шт.',
-          ),
-        ),
+        SnackBar(content: Text('На складе только ${p.stockAvailable} шт.')),
       );
       return;
     }
@@ -131,15 +128,16 @@ class _SellProductScreenState extends State<SellProductScreen> {
       // Обновляем список товаров — остаток изменился.
       await context.read<ProductListNotifier>().load();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Продажа оформлена')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Продажа оформлена')));
       context.go('/sales');
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
@@ -209,8 +207,8 @@ class _SellProductScreenState extends State<SellProductScreen> {
                         title: Text(p.name),
                         subtitle: Text(
                           'Артикул: ${p.sku} • '
-                              'Цена: ${p.price.toStringAsFixed(2)} ₽ • '
-                              'На складе: ${p.stockAvailable}',
+                          'Цена: ${p.price.toStringAsFixed(2)} ₽ • '
+                          'На складе: ${p.stockAvailable}',
                         ),
                       ),
                     ),
@@ -238,7 +236,8 @@ class _SellProductScreenState extends State<SellProductScreen> {
                         setState(() => _customerId = v);
                         _recalc();
                       },
-                      validator: (v) => v == null ? 'Выберите покупателя' : null,
+                      validator: (v) =>
+                          v == null ? 'Выберите покупателя' : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -263,10 +262,10 @@ class _SellProductScreenState extends State<SellProductScreen> {
                       onPressed: _saving ? null : _submit,
                       icon: _saving
                           ? const SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Icon(Icons.check),
                       label: const Text('Оформить продажу'),
                     ),
@@ -289,10 +288,8 @@ class _SellProductScreenState extends State<SellProductScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _row('Подытог', t.subtotal),
-            if (t.cardDiscount > 0)
-              _row('Скидка по карте', -t.cardDiscount),
-            if (t.promoDiscount > 0)
-              _row('Скидка по акции', -t.promoDiscount),
+            if (t.cardDiscount > 0) _row('Скидка по карте', -t.cardDiscount),
+            if (t.promoDiscount > 0) _row('Скидка по акции', -t.promoDiscount),
             if (t.appliedPromotions.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4, bottom: 8),

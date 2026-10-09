@@ -35,7 +35,8 @@ Dio buildDio({
     InterceptorsWrapper(
       onError: (error, handler) async {
         final isRead = error.requestOptions.method.toUpperCase() == 'GET';
-        final canRetry = isRead &&
+        final canRetry =
+            isRead &&
             (error.type == DioExceptionType.connectionError ||
                 error.type == DioExceptionType.connectionTimeout ||
                 error.type == DioExceptionType.receiveTimeout);
@@ -127,7 +128,7 @@ Dio buildDio({
         onError: (error, handler) {
           debugPrint(
             '[API ✗] ${error.type} ${error.requestOptions.uri} '
-                '${error.response?.statusCode ?? ''}',
+            '${error.response?.statusCode ?? ''}',
           );
           return handler.next(error);
         },

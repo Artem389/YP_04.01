@@ -25,11 +25,14 @@ class HomeScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(user.fullName,
-                        style: const TextStyle(fontSize: 13)),
-                    Text(user.role.label,
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.white70)),
+                    Text(user.fullName, style: const TextStyle(fontSize: 13)),
+                    Text(
+                      user.role.label,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white70,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -94,7 +97,6 @@ class HomeScreen extends StatelessWidget {
                       label: 'Акции',
                       onPressed: () => context.go('/promotions'),
                     ),
-
                   ],
                   const SizedBox(height: 16),
                 ],

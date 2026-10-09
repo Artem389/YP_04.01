@@ -13,11 +13,11 @@ ScreenSize screenSizeOf(BuildContext context) {
 }
 
 T byScreen<T>(
-    BuildContext context, {
-      required T compact,
-      T? medium,
-      T? expanded,
-    }) {
+  BuildContext context, {
+  required T compact,
+  T? medium,
+  T? expanded,
+}) {
   return switch (screenSizeOf(context)) {
     ScreenSize.compact => compact,
     ScreenSize.medium => medium ?? compact,

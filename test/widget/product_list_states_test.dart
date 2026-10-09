@@ -31,10 +31,9 @@ class _FakeProductRepo implements ProductRepository {
 
   @override
   Future<PageResult<Product>> find(
-      ProductQuery q, {
-        CancelToken? cancelToken,
-      }) =>
-      onFind();
+    ProductQuery q, {
+    CancelToken? cancelToken,
+  }) => onFind();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -115,33 +114,35 @@ Widget _wrap({
 }
 
 void main() {
-  testWidgets('Показывает индикатор загрузки, пока данные не пришли',
-          (tester) async {
-        final completer = Completer<PageResult<Product>>();
-        final repo = _FakeProductRepo(() => completer.future);
-        final auth = await _makeAuth(Role.manager);
+  testWidgets('Показывает индикатор загрузки, пока данные не пришли', (
+    tester,
+  ) async {
+    final completer = Completer<PageResult<Product>>();
+    final repo = _FakeProductRepo(() => completer.future);
+    final auth = await _makeAuth(Role.manager);
 
-        await tester.pumpWidget(_wrap(productRepo: repo, auth: auth));
-        await tester.pump();
-        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.pumpWidget(_wrap(productRepo: repo, auth: auth));
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-        completer.complete(
-          const PageResult(items: [], page: 1, size: 10, total: 0),
-        );
-        await tester.pumpAndSettle();
-      });
+    completer.complete(
+      const PageResult(items: [], page: 1, size: 10, total: 0),
+    );
+    await tester.pumpAndSettle();
+  });
 
-  testWidgets('Показывает текст «Товары не найдены» при пустом результате',
-          (tester) async {
-        final repo = _FakeProductRepo(
-              () async => const PageResult(items: [], page: 1, size: 10, total: 0),
-        );
-        final auth = await _makeAuth(Role.manager);
-        await tester.pumpWidget(_wrap(productRepo: repo, auth: auth));
-        await tester.pumpAndSettle();
-        expect(find.text('Товары не найдены'), findsOneWidget);
-        expect(find.byType(CircularProgressIndicator), findsNothing);
-      });
+  testWidgets('Показывает текст «Товары не найдены» при пустом результате', (
+    tester,
+  ) async {
+    final repo = _FakeProductRepo(
+      () async => const PageResult(items: [], page: 1, size: 10, total: 0),
+    );
+    final auth = await _makeAuth(Role.manager);
+    await tester.pumpWidget(_wrap(productRepo: repo, auth: auth));
+    await tester.pumpAndSettle();
+    expect(find.text('Товары не найдены'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
 
   testWidgets('Показывает ошибку и кнопку «Повторить»', (tester) async {
     final repo = _FakeProductRepo(() async => throw Exception('boom'));
@@ -154,7 +155,7 @@ void main() {
 
   testWidgets('Кнопка «Добавить товар» видна менеджеру', (tester) async {
     final repo = _FakeProductRepo(
-          () async => const PageResult(items: [], page: 1, size: 10, total: 0),
+      () async => const PageResult(items: [], page: 1, size: 10, total: 0),
     );
     final auth = await _makeAuth(Role.manager);
     await tester.pumpWidget(_wrap(productRepo: repo, auth: auth));
@@ -164,7 +165,7 @@ void main() {
 
   testWidgets('Кнопка «Добавить товар» скрыта покупателю', (tester) async {
     final repo = _FakeProductRepo(
-          () async => const PageResult(items: [], page: 1, size: 10, total: 0),
+      () async => const PageResult(items: [], page: 1, size: 10, total: 0),
     );
     final auth = await _makeAuth(Role.client);
     await tester.pumpWidget(_wrap(productRepo: repo, auth: auth));

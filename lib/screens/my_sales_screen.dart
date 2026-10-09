@@ -45,7 +45,8 @@ class _MySalesScreenState extends State<MySalesScreen> {
       final newSize = int.tryParse(widget.queryParams['size'] ?? '') ?? 10;
       final newPage = int.tryParse(widget.queryParams['page'] ?? '') ?? 1;
 
-      final changed = newDeleted != _includeDeleted ||
+      final changed =
+          newDeleted != _includeDeleted ||
           newSize != _size ||
           (newPage < 1 ? 1 : newPage) != _pageIndex;
 
@@ -71,22 +72,22 @@ class _MySalesScreenState extends State<MySalesScreen> {
     if (d) q['deleted'] = 'true';
     if (s != 10) q['size'] = '$s';
     if (p > 1) q['page'] = '$p';
-    final uri = Uri(
-      path: '/sales',
-      queryParameters: q.isEmpty ? null : q,
-    );
+    final uri = Uri(path: '/sales', queryParameters: q.isEmpty ? null : q);
     context.go(uri.toString());
   }
 
   Future<void> _load() async {
-
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       final res = await context.read<SaleRepository>().find(
-        ProductQuery(page: _pageIndex, size: _size, includeDeleted: _includeDeleted,),
+        ProductQuery(
+          page: _pageIndex,
+          size: _size,
+          includeDeleted: _includeDeleted,
+        ),
       );
       if (!mounted) return;
       setState(() {
@@ -101,13 +102,11 @@ class _MySalesScreenState extends State<MySalesScreen> {
       });
     }
   }
+
   Widget _buildTrailing(Sale s, bool canManage) {
     // Клиент действий не видит — только статус.
     if (!canManage) {
-      return Chip(
-        label: Text(s.status),
-        visualDensity: VisualDensity.compact,
-      );
+      return Chip(label: Text(s.status), visualDensity: VisualDensity.compact);
     }
 
     // Менеджер/админ: меню действий, набор зависит от состояния записи.
@@ -135,52 +134,62 @@ class _MySalesScreenState extends State<MySalesScreen> {
 
         // Удалённая запись: только восстановить или удалить навсегда.
         if (s.isDeleted) {
-          items.add(const PopupMenuItem(
-            value: 'restore',
-            child: ListTile(
-              leading: Icon(Icons.restore),
-              title: Text('Восстановить'),
+          items.add(
+            const PopupMenuItem(
+              value: 'restore',
+              child: ListTile(
+                leading: Icon(Icons.restore),
+                title: Text('Восстановить'),
+              ),
             ),
-          ));
-          items.add(const PopupMenuItem(
-            value: 'hard',
-            child: ListTile(
-              leading: Icon(Icons.delete_forever, color: Colors.red),
-              title: Text('Удалить навсегда'),
+          );
+          items.add(
+            const PopupMenuItem(
+              value: 'hard',
+              child: ListTile(
+                leading: Icon(Icons.delete_forever, color: Colors.red),
+                title: Text('Удалить навсегда'),
+              ),
             ),
-          ));
+          );
           return items;
         }
 
         // Активная продажа: закрыть или пометить как удалённую.
         if (s.status == 'active') {
-          items.add(const PopupMenuItem(
-            value: 'close',
-            child: ListTile(
-              leading: Icon(Icons.check_circle_outline),
-              title: Text('Закрыть продажу'),
+          items.add(
+            const PopupMenuItem(
+              value: 'close',
+              child: ListTile(
+                leading: Icon(Icons.check_circle_outline),
+                title: Text('Закрыть продажу'),
+              ),
             ),
-          ));
+          );
         }
-        items.add(const PopupMenuItem(
-          value: 'delete',
-          child: ListTile(
-            leading: Icon(Icons.delete_outline, color: Colors.red),
-            title: Text('Удалить'),
+        items.add(
+          const PopupMenuItem(
+            value: 'delete',
+            child: ListTile(
+              leading: Icon(Icons.delete_outline, color: Colors.red),
+              title: Text('Удалить'),
+            ),
           ),
-        ));
+        );
         return items;
       },
     );
   }
+
   Future<void> _restore(Sale s) async {
     try {
       await context.read<SaleRepository>().restore(s.id);
       if (mounted) await _load();
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     }
   }
@@ -210,12 +219,14 @@ class _MySalesScreenState extends State<MySalesScreen> {
         if (mounted) await _load();
       } on ApiException catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(e.message)));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.message)));
         }
       }
     }
   }
+
   Future<void> _softDelete(Sale s) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -240,8 +251,9 @@ class _MySalesScreenState extends State<MySalesScreen> {
         if (mounted) await _load();
       } on ApiException catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(e.message)));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.message)));
         }
       }
     }
@@ -271,8 +283,9 @@ class _MySalesScreenState extends State<MySalesScreen> {
         if (mounted) await _load();
       } on ApiException catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(e.message)));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.message)));
         }
       }
     }
@@ -307,11 +320,8 @@ class _MySalesScreenState extends State<MySalesScreen> {
                   onSelected: (v) => _updateUri(includeDeleted: v, page: 1),
                 ),
                 TextButton.icon(
-                  onPressed: () => _updateUri(
-                    includeDeleted: false,
-                    size: 10,
-                    page: 1,
-                  ),
+                  onPressed: () =>
+                      _updateUri(includeDeleted: false, size: 10, page: 1),
                   icon: const Icon(Icons.clear),
                   label: const Text('Сбросить'),
                 ),
@@ -354,17 +364,19 @@ class _MySalesScreenState extends State<MySalesScreen> {
               final isDeleted = s.isDeleted;
               return ListTile(
                 leading: CircleAvatar(
-                  child: Text(s.productName.isEmpty
-                      ? '?'
-                      : s.productName[0].toUpperCase()),
+                  child: Text(
+                    s.productName.isEmpty
+                        ? '?'
+                        : s.productName[0].toUpperCase(),
+                  ),
                 ),
                 title: Text(s.productName),
                 subtitle: Text(
                   '${s.customerName} • ${s.quantity} шт. × '
-                      '${s.unitPrice.toStringAsFixed(2)} ₽ = '
-                      '${s.subtotal.toStringAsFixed(2)} ₽\n'
-                      '${s.soldAt.toLocal().toString().substring(0, 16)}'
-                      '${isDeleted ? '\nУДАЛЕНА' : ''}',
+                  '${s.unitPrice.toStringAsFixed(2)} ₽ = '
+                  '${s.subtotal.toStringAsFixed(2)} ₽\n'
+                  '${s.soldAt.toLocal().toString().substring(0, 16)}'
+                  '${isDeleted ? '\nУДАЛЕНА' : ''}',
                 ),
                 isThreeLine: true,
                 trailing: _buildTrailing(s, canManage),
@@ -405,9 +417,9 @@ class _MySalesScreenState extends State<MySalesScreen> {
             icon: const Icon(Icons.chevron_left),
             onPressed: _page.hasPrevious
                 ? () {
-              _pageIndex--;
-              _load();
-            }
+                    _pageIndex--;
+                    _load();
+                  }
                 : null,
           ),
           Text('${_page.page} / ${_page.totalPages}'),
@@ -415,9 +427,9 @@ class _MySalesScreenState extends State<MySalesScreen> {
             icon: const Icon(Icons.chevron_right),
             onPressed: _page.hasNext
                 ? () {
-              _pageIndex++;
-              _load();
-            }
+                    _pageIndex++;
+                    _load();
+                  }
                 : null,
           ),
         ],

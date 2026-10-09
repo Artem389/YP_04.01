@@ -17,9 +17,5 @@ class PageResult<T> {
 
   // Конструктор намеренно не const: пустой константный список
   // с параметром типа T в Dart запрещён.
-  PageResult.empty()
-      : items = <T>[],
-        page = 1,
-        size = 10,
-        total = 0;
+  PageResult.empty() : items = <T>[], page = 1, size = 10, total = 0;
 }

@@ -42,9 +42,9 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
   }
 
   Future<void> _load() async {
-    final c = await context
-        .read<ProductCategoryRepository>()
-        .findById(widget.categoryId!);
+    final c = await context.read<ProductCategoryRepository>().findById(
+      widget.categoryId!,
+    );
     if (!mounted) return;
     if (c == null) {
       _saved = true;
@@ -87,8 +87,10 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
       description: _description.text.trim(),
     );
 
-    final exists =
-    await repo.nameExists(draft.name, exceptId: widget.categoryId);
+    final exists = await repo.nameExists(
+      draft.name,
+      exceptId: widget.categoryId,
+    );
     if (exists) {
       setState(() {
         _serverErrors = {'name': 'Категория с таким названием уже есть'};
@@ -194,7 +196,7 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
               validator: V.combine([
                 V.required(),
                 V.length(min: 2, max: 80),
-                    (v) => _serverErrors['name'],
+                (v) => _serverErrors['name'],
               ]),
             ),
             FormFieldSpec(

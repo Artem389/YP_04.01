@@ -7,7 +7,7 @@ class Sale {
   final int quantity;
   final double unitPrice;
   final double subtotal;
-  final double total;   // итог с учётом скидок и НДС, если сервер вернёт
+  final double total; // итог с учётом скидок и НДС, если сервер вернёт
   final DateTime soldAt;
   final DateTime? closedAt;
   final DateTime? deletedAt;
@@ -34,7 +34,8 @@ class Sale {
     final customer = json['customer'] as Map<String, dynamic>?;
     final product = json['product'] as Map<String, dynamic>?;
     final qty = (json['quantity'] as num?)?.toInt() ?? 1;
-    final unit = (json['unitPrice'] as num?)?.toDouble() ??
+    final unit =
+        (json['unitPrice'] as num?)?.toDouble() ??
         (product?['price'] as num?)?.toDouble() ??
         0;
     return Sale(
@@ -47,8 +48,8 @@ class Sale {
       unitPrice: unit,
       subtotal: (json['subtotal'] as num?)?.toDouble() ?? unit * qty,
       total: (json['total'] as num?)?.toDouble() ?? unit * qty,
-      soldAt: DateTime.tryParse(json['soldAt'] as String? ?? '') ??
-          DateTime.now(),
+      soldAt:
+          DateTime.tryParse(json['soldAt'] as String? ?? '') ?? DateTime.now(),
       closedAt: json['closedAt'] == null
           ? null
           : DateTime.tryParse(json['closedAt'] as String),

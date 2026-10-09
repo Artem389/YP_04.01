@@ -51,7 +51,8 @@ class PersistentCustomerRepository implements CustomerRepository {
   }
 
   @override
-  Future<PageResult<Customer>> find(ProductQuery q, {
+  Future<PageResult<Customer>> find(
+    ProductQuery q, {
     CancelToken? cancelToken,
   }) async {
     await Future.delayed(const Duration(milliseconds: 200));
@@ -60,16 +61,20 @@ class PersistentCustomerRepository implements CustomerRepository {
     if (q.search.trim().isNotEmpty) {
       final needle = q.search.trim().toLowerCase();
       rows = rows
-          .where((c) =>
-      c.fullName.toLowerCase().contains(needle) ||
-          c.email.toLowerCase().contains(needle) ||
-          c.phone.contains(needle))
+          .where(
+            (c) =>
+                c.fullName.toLowerCase().contains(needle) ||
+                c.email.toLowerCase().contains(needle) ||
+                c.phone.contains(needle),
+          )
           .toList();
     }
 
-    rows.sort((a, b) => q.sortAscending
-        ? a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase())
-        : b.fullName.toLowerCase().compareTo(a.fullName.toLowerCase()));
+    rows.sort(
+      (a, b) => q.sortAscending
+          ? a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase())
+          : b.fullName.toLowerCase().compareTo(a.fullName.toLowerCase()),
+    );
 
     final total = rows.length;
     final from = (q.page - 1) * q.size;
@@ -151,7 +156,8 @@ class PersistentCustomerRepository implements CustomerRepository {
 
   @override
   Future<bool> emailExists(String email, {int? exceptId}) async {
-    return _items.any((c) =>
-    c.email.toLowerCase() == email.toLowerCase() && c.id != exceptId);
+    return _items.any(
+      (c) => c.email.toLowerCase() == email.toLowerCase() && c.id != exceptId,
+    );
   }
 }

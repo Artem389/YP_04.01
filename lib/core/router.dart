@@ -55,26 +55,18 @@ GoRouter buildRouter(AuthNotifier auth) {
     routes: [
       GoRoute(
         path: '/login',
-        builder: (context, state) => LoginScreen(
-          from: state.uri.queryParameters['from'],
-        ),
+        builder: (context, state) =>
+            LoginScreen(from: state.uri.queryParameters['from']),
       ),
-      GoRoute(
-        path: '/register',
-        builder: (_, __) => const RegisterScreen(),
-      ),
+      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
-      GoRoute(
-        path: '/forbidden',
-        builder: (_, __) => const ForbiddenScreen(),
-      ),
+      GoRoute(path: '/forbidden', builder: (_, __) => const ForbiddenScreen()),
 
       // ─── Продажи: доступно всем ролям, данные фильтрует сервер ───
       GoRoute(
         path: '/sales',
-        builder: (context, state) => MySalesScreen(
-          queryParams: state.uri.queryParameters,
-        ),
+        builder: (context, state) =>
+            MySalesScreen(queryParams: state.uri.queryParameters),
       ),
 
       // ─── ТОВАРЫ ───
@@ -86,14 +78,12 @@ GoRouter buildRouter(AuthNotifier auth) {
           GoRoute(
             path: 'new',
             // Добавлять товар — только manager и выше.
-            redirect: (_, __) =>
-            auth.has(Role.manager) ? null : '/forbidden',
+            redirect: (_, __) => auth.has(Role.manager) ? null : '/forbidden',
             builder: (_, __) => const ProductFormScreen(),
           ),
           GoRoute(
             path: ':id/edit',
-            redirect: (_, __) =>
-            auth.has(Role.manager) ? null : '/forbidden',
+            redirect: (_, __) => auth.has(Role.manager) ? null : '/forbidden',
             builder: (_, state) => ProductFormScreen(
               productId: int.tryParse(state.pathParameters['id'] ?? ''),
             ),
@@ -103,7 +93,8 @@ GoRouter buildRouter(AuthNotifier auth) {
             // Оформлять покупку может только покупатель (client),
             // а не менеджер и не админ.
             redirect: (_, __) {
-              final isClient = auth.has(Role.client) &&
+              final isClient =
+                  auth.has(Role.client) &&
                   !auth.has(Role.manager) &&
                   !auth.has(Role.admin);
               return isClient ? null : '/forbidden';
@@ -119,14 +110,10 @@ GoRouter buildRouter(AuthNotifier auth) {
       GoRoute(
         path: '/categories',
         redirect: (_, __) => auth.has(Role.manager) ? null : '/forbidden',
-        builder: (context, state) => CategoryListScreen(
-          queryParams: state.uri.queryParameters,
-        ),
+        builder: (context, state) =>
+            CategoryListScreen(queryParams: state.uri.queryParameters),
         routes: [
-          GoRoute(
-            path: 'new',
-            builder: (_, __) => const CategoryFormScreen(),
-          ),
+          GoRoute(path: 'new', builder: (_, __) => const CategoryFormScreen()),
           GoRoute(
             path: ':id/edit',
             builder: (_, state) => CategoryFormScreen(
@@ -166,10 +153,7 @@ GoRouter buildRouter(AuthNotifier auth) {
           ],
         ),
         routes: [
-          GoRoute(
-            path: 'new',
-            builder: (_, __) => const SupplierFormScreen(),
-          ),
+          GoRoute(path: 'new', builder: (_, __) => const SupplierFormScreen()),
           GoRoute(
             path: ':id/edit',
             builder: (_, state) => SupplierFormScreen(
@@ -217,10 +201,7 @@ GoRouter buildRouter(AuthNotifier auth) {
           ],
         ),
         routes: [
-          GoRoute(
-            path: 'new',
-            builder: (_, __) => const CustomerFormScreen(),
-          ),
+          GoRoute(path: 'new', builder: (_, __) => const CustomerFormScreen()),
           GoRoute(
             path: ':id/edit',
             builder: (_, state) => CustomerFormScreen(
@@ -233,14 +214,10 @@ GoRouter buildRouter(AuthNotifier auth) {
       GoRoute(
         path: '/promotions',
         redirect: (_, __) => auth.has(Role.manager) ? null : '/forbidden',
-        builder: (context, state) => PromotionListScreen(
-          queryParams: state.uri.queryParameters,
-        ),
+        builder: (context, state) =>
+            PromotionListScreen(queryParams: state.uri.queryParameters),
         routes: [
-          GoRoute(
-            path: 'new',
-            builder: (_, __) => const PromotionFormScreen(),
-          ),
+          GoRoute(path: 'new', builder: (_, __) => const PromotionFormScreen()),
           GoRoute(
             path: ':id/edit',
             builder: (_, state) => PromotionFormScreen(
@@ -262,7 +239,6 @@ GoRouter buildRouter(AuthNotifier auth) {
         builder: (_, __) => const AdminUsersScreen(),
       ),
     ],
-    errorBuilder: (_, state) =>
-        NotFoundScreen(location: state.uri.toString()),
+    errorBuilder: (_, state) => NotFoundScreen(location: state.uri.toString()),
   );
 }

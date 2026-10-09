@@ -43,8 +43,9 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
   }
 
   Future<void> _load() async {
-    final s =
-    await context.read<SupplierRepository>().findById(widget.supplierId!);
+    final s = await context.read<SupplierRepository>().findById(
+      widget.supplierId!,
+    );
     if (!mounted) return;
     if (s == null) {
       _saved = true;
@@ -93,11 +94,12 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
       phone: _phone.text.trim(),
     );
 
-    final exists =
-    await repo.emailExists(draft.email, exceptId: widget.supplierId);
+    final exists = await repo.emailExists(
+      draft.email,
+      exceptId: widget.supplierId,
+    );
     if (exists) {
-      setState(() =>
-      _serverErrors = {'email': 'Такой email уже используется'});
+      setState(() => _serverErrors = {'email': 'Такой email уже используется'});
       _formKey.currentState!.validate();
       return;
     }
@@ -196,10 +198,7 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
               key: 'name',
               label: 'Название',
               controller: _name,
-              validator: V.combine([
-                V.required(),
-                V.length(min: 2, max: 120),
-              ]),
+              validator: V.combine([V.required(), V.length(min: 2, max: 120)]),
             ),
             FormFieldSpec(
               key: 'email',
@@ -209,7 +208,7 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
               validator: V.combine([
                 V.required(),
                 V.email(),
-                    (v) => _serverErrors['email'],
+                (v) => _serverErrors['email'],
               ]),
             ),
             FormFieldSpec(
@@ -217,10 +216,7 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
               label: 'Телефон',
               controller: _phone,
               keyboardType: TextInputType.phone,
-              validator: V.combine([
-                V.required(),
-                V.length(min: 5, max: 20),
-              ]),
+              validator: V.combine([V.required(), V.length(min: 5, max: 20)]),
             ),
           ],
         ),

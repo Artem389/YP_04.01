@@ -1,8 +1,8 @@
 class Supplier {
   final int id;
   final String name;
-  final String email;   // city
-  final String phone;   // mapped phone
+  final String email; // city
+  final String phone; // mapped phone
   final DateTime? deletedAt;
 
   const Supplier({

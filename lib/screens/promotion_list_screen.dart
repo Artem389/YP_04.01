@@ -85,7 +85,9 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
     _debounce = Timer(const Duration(milliseconds: 300), () {
       if (!mounted) return;
       _updateQuery(
-        context.read<EntityListNotifier<Promotion>>().query.copyWith(search: value),
+        context.read<EntityListNotifier<Promotion>>().query.copyWith(
+          search: value,
+        ),
       );
     });
   }
@@ -172,7 +174,10 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
   }
 
   Widget _body(
-      BuildContext context, EntityListNotifier<Promotion> n, bool canManage) {
+    BuildContext context,
+    EntityListNotifier<Promotion> n,
+    bool canManage,
+  ) {
     switch (n.status) {
       case LoadStatus.idle:
       case LoadStatus.loading:
@@ -204,7 +209,11 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
     }
   }
 
-  Widget _cardList(BuildContext context, EntityListNotifier<Promotion> n, bool canManage) {
+  Widget _cardList(
+    BuildContext context,
+    EntityListNotifier<Promotion> n,
+    bool canManage,
+  ) {
     return ListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: n.result.items.length,
@@ -224,49 +233,57 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
           onToggle: canManage ? () => n.toggleSelection(p.id) : null,
           actions: canManage
               ? [
-            IconButton(
-              tooltip: 'Редактировать',
-              icon: const Icon(Icons.edit),
-              onPressed: () => context.go('/promotions/${p.id}/edit'),
-            ),
-            if (p.isDeleted)
-              IconButton(
-                tooltip: 'Восстановить',
-                icon: const Icon(Icons.restore),
-                onPressed: () => _restore(context, p.id),
-              )
-            else
-              IconButton(
-                tooltip: 'Удалить',
-                icon: const Icon(Icons.delete),
-                onPressed: () => _confirmSoftDelete(context, p.id, p.name),
-              ),
-            PopupMenuButton<String>(
-              tooltip: 'Ещё',
-              icon: const Icon(Icons.more_vert),
-              onSelected: (value) async {
-                if (value == 'hard') {
-                  await _confirmHardDelete(context, p.id, p.name);
-                }
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'hard',
-                  child: ListTile(
-                    leading: Icon(Icons.delete_forever, color: Colors.red),
-                    title: Text('Удалить навсегда'),
+                  IconButton(
+                    tooltip: 'Редактировать',
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => context.go('/promotions/${p.id}/edit'),
                   ),
-                ),
-              ],
-            ),
-          ]
+                  if (p.isDeleted)
+                    IconButton(
+                      tooltip: 'Восстановить',
+                      icon: const Icon(Icons.restore),
+                      onPressed: () => _restore(context, p.id),
+                    )
+                  else
+                    IconButton(
+                      tooltip: 'Удалить',
+                      icon: const Icon(Icons.delete),
+                      onPressed: () =>
+                          _confirmSoftDelete(context, p.id, p.name),
+                    ),
+                  PopupMenuButton<String>(
+                    tooltip: 'Ещё',
+                    icon: const Icon(Icons.more_vert),
+                    onSelected: (value) async {
+                      if (value == 'hard') {
+                        await _confirmHardDelete(context, p.id, p.name);
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'hard',
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.delete_forever,
+                            color: Colors.red,
+                          ),
+                          title: Text('Удалить навсегда'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ]
               : const [],
         );
       },
     );
   }
 
-  Widget _table(BuildContext context, EntityListNotifier<Promotion> n, bool canManage) {
+  Widget _table(
+    BuildContext context,
+    EntityListNotifier<Promotion> n,
+    bool canManage,
+  ) {
     return EntityTable<Promotion>(
       items: n.result.items,
       idOf: (p) => p.id,
@@ -284,53 +301,55 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
         ),
         TableColumnSpec(
           label: 'Статус',
-          build: (p) => Text(p.isActiveAt(DateTime.now()) ? 'Активна' : 'Неактивна'),
+          build: (p) =>
+              Text(p.isActiveAt(DateTime.now()) ? 'Активна' : 'Неактивна'),
         ),
         TableColumnSpec(
           label: 'Период',
           build: (p) => Text(
-              '${p.startsAt.toLocal().toString().substring(0, 10)} — '
-                  '${p.endsAt.toLocal().toString().substring(0, 10)}'),
+            '${p.startsAt.toLocal().toString().substring(0, 10)} — '
+            '${p.endsAt.toLocal().toString().substring(0, 10)}',
+          ),
         ),
       ],
       actions: canManage
           ? (p) => [
-        IconButton(
-          tooltip: 'Редактировать',
-          icon: const Icon(Icons.edit),
-          onPressed: () => context.go('/promotions/${p.id}/edit'),
-        ),
-        if (p.isDeleted)
-          IconButton(
-            tooltip: 'Восстановить',
-            icon: const Icon(Icons.restore),
-            onPressed: () => _restore(context, p.id),
-          )
-        else
-          IconButton(
-            tooltip: 'Удалить',
-            icon: const Icon(Icons.delete),
-            onPressed: () => _confirmSoftDelete(context, p.id, p.name),
-          ),
-        PopupMenuButton<String>(
-          tooltip: 'Ещё',
-          icon: const Icon(Icons.more_vert),
-          onSelected: (value) async {
-            if (value == 'hard') {
-              await _confirmHardDelete(context, p.id, p.name);
-            }
-          },
-          itemBuilder: (_) => const [
-            PopupMenuItem(
-              value: 'hard',
-              child: ListTile(
-                leading: Icon(Icons.delete_forever, color: Colors.red),
-                title: Text('Удалить навсегда'),
+              IconButton(
+                tooltip: 'Редактировать',
+                icon: const Icon(Icons.edit),
+                onPressed: () => context.go('/promotions/${p.id}/edit'),
               ),
-            ),
-          ],
-        ),
-      ]
+              if (p.isDeleted)
+                IconButton(
+                  tooltip: 'Восстановить',
+                  icon: const Icon(Icons.restore),
+                  onPressed: () => _restore(context, p.id),
+                )
+              else
+                IconButton(
+                  tooltip: 'Удалить',
+                  icon: const Icon(Icons.delete),
+                  onPressed: () => _confirmSoftDelete(context, p.id, p.name),
+                ),
+              PopupMenuButton<String>(
+                tooltip: 'Ещё',
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) async {
+                  if (value == 'hard') {
+                    await _confirmHardDelete(context, p.id, p.name);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'hard',
+                    child: ListTile(
+                      leading: Icon(Icons.delete_forever, color: Colors.red),
+                      title: Text('Удалить навсегда'),
+                    ),
+                  ),
+                ],
+              ),
+            ]
           : null,
     );
   }
@@ -346,16 +365,17 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
           IconButton(
             icon: const Icon(Icons.first_page),
             onPressed: r.hasPrevious
-                ? () => _updateQuery(n.query.copyWith(page: 1), resetPage: false)
+                ? () =>
+                      _updateQuery(n.query.copyWith(page: 1), resetPage: false)
                 : null,
           ),
           IconButton(
             icon: const Icon(Icons.chevron_left),
             onPressed: r.hasPrevious
                 ? () => _updateQuery(
-              n.query.copyWith(page: n.query.page - 1),
-              resetPage: false,
-            )
+                    n.query.copyWith(page: n.query.page - 1),
+                    resetPage: false,
+                  )
                 : null,
           ),
           Text('${r.page} / ${r.totalPages}'),
@@ -363,18 +383,18 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
             icon: const Icon(Icons.chevron_right),
             onPressed: r.hasNext
                 ? () => _updateQuery(
-              n.query.copyWith(page: n.query.page + 1),
-              resetPage: false,
-            )
+                    n.query.copyWith(page: n.query.page + 1),
+                    resetPage: false,
+                  )
                 : null,
           ),
           IconButton(
             icon: const Icon(Icons.last_page),
             onPressed: r.hasNext
                 ? () => _updateQuery(
-              n.query.copyWith(page: r.totalPages),
-              resetPage: false,
-            )
+                    n.query.copyWith(page: r.totalPages),
+                    resetPage: false,
+                  )
                 : null,
           ),
         ],
@@ -414,7 +434,10 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
   }
 
   Future<void> _confirmSoftDelete(
-      BuildContext context, int id, String name) async {
+    BuildContext context,
+    int id,
+    String name,
+  ) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -441,7 +464,10 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
   }
 
   Future<void> _confirmHardDelete(
-      BuildContext context, int id, String name) async {
+    BuildContext context,
+    int id,
+    String name,
+  ) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(

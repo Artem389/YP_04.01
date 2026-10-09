@@ -53,28 +53,31 @@ class PersistentProductRepository implements ProductRepository {
   }
 
   @override
-  Future<PageResult<Product>> find(ProductQuery q, {
+  Future<PageResult<Product>> find(
+    ProductQuery q, {
     CancelToken? cancelToken,
   }) async {
     await Future.delayed(const Duration(milliseconds: 250));
 
-    var rows = _products.where((p) => q.includeDeleted || !p.isDeleted).toList();
+    var rows = _products
+        .where((p) => q.includeDeleted || !p.isDeleted)
+        .toList();
 
     if (q.search.trim().isNotEmpty) {
       final needle = q.search.trim().toLowerCase();
       rows = rows
-          .where((p) =>
-      p.name.toLowerCase().contains(needle) ||
-          p.sku.toLowerCase().contains(needle))
+          .where(
+            (p) =>
+                p.name.toLowerCase().contains(needle) ||
+                p.sku.toLowerCase().contains(needle),
+          )
           .toList();
     }
     if (q.categoryId != null) {
       rows = rows.where((p) => p.categoryId == q.categoryId).toList();
     }
     if (q.supplierId != null) {
-      rows = rows
-          .where((p) => p.supplierIds.contains(q.supplierId))
-          .toList();
+      rows = rows.where((p) => p.supplierIds.contains(q.supplierId)).toList();
     }
     if (q.priceFrom != null) {
       rows = rows.where((p) => p.price >= q.priceFrom!).toList();
@@ -179,8 +182,9 @@ class PersistentProductRepository implements ProductRepository {
 
   /// Проверка уникальности артикула (ПР3, п.12).
   Future<bool> skuExists(String sku, {int? exceptId}) async {
-    return _products.any((p) =>
-    p.sku.toLowerCase() == sku.toLowerCase() && p.id != exceptId);
+    return _products.any(
+      (p) => p.sku.toLowerCase() == sku.toLowerCase() && p.id != exceptId,
+    );
   }
 
   @override

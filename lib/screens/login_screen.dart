@@ -63,9 +63,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const Text(
                     'Учётные записи:\n'
-                        'admin / admin123         — администратор\n'
-                        'manager / manager123 — менеджер\n'
-                        'client / client123       — покупатель',
+                    'admin / admin123         — администратор\n'
+                    'manager / manager123 — менеджер\n'
+                    'client / client123       — покупатель',
                     style: TextStyle(fontSize: 13, color: Colors.grey),
                   ),
                   const SizedBox(height: 24),
@@ -75,8 +75,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       labelText: 'Логин',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Введите логин' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Введите логин'
+                        : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -87,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       border: OutlineInputBorder(),
                     ),
                     validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Введите пароль' : null,
+                        (v == null || v.isEmpty) ? 'Введите пароль' : null,
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
@@ -98,10 +99,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: auth.isBusy ? null : _submit,
                     child: auth.isBusy
                         ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : const Text('Войти'),
                   ),
                   TextButton(

@@ -51,7 +51,8 @@ class PersistentSupplierRepository implements SupplierRepository {
   }
 
   @override
-  Future<PageResult<Supplier>> find(ProductQuery q, {
+  Future<PageResult<Supplier>> find(
+    ProductQuery q, {
     CancelToken? cancelToken,
   }) async {
     await Future.delayed(const Duration(milliseconds: 200));
@@ -60,15 +61,19 @@ class PersistentSupplierRepository implements SupplierRepository {
     if (q.search.trim().isNotEmpty) {
       final needle = q.search.trim().toLowerCase();
       rows = rows
-          .where((s) =>
-      s.name.toLowerCase().contains(needle) ||
-          s.email.toLowerCase().contains(needle))
+          .where(
+            (s) =>
+                s.name.toLowerCase().contains(needle) ||
+                s.email.toLowerCase().contains(needle),
+          )
           .toList();
     }
 
-    rows.sort((a, b) => q.sortAscending
-        ? a.name.toLowerCase().compareTo(b.name.toLowerCase())
-        : b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+    rows.sort(
+      (a, b) => q.sortAscending
+          ? a.name.toLowerCase().compareTo(b.name.toLowerCase())
+          : b.name.toLowerCase().compareTo(a.name.toLowerCase()),
+    );
 
     final total = rows.length;
     final from = (q.page - 1) * q.size;
@@ -155,8 +160,9 @@ class PersistentSupplierRepository implements SupplierRepository {
 
   @override
   Future<bool> emailExists(String email, {int? exceptId}) async {
-    return _items.any((s) =>
-    s.email.toLowerCase() == email.toLowerCase() && s.id != exceptId);
+    return _items.any(
+      (s) => s.email.toLowerCase() == email.toLowerCase() && s.id != exceptId,
+    );
   }
 
   @override

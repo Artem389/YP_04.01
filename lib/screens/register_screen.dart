@@ -120,7 +120,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Пароль',
                       helperText:
-                      'Не короче 8 символов, буква, цифра и спецсимвол',
+                          'Не короче 8 символов, буква, цифра и спецсимвол',
                       border: OutlineInputBorder(),
                     ),
                     validator: _passwordValidator,
@@ -134,7 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       border: OutlineInputBorder(),
                     ),
                     validator: (v) =>
-                    v == _password.text ? null : 'Пароли не совпадают',
+                        v == _password.text ? null : 'Пароли не совпадают',
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
@@ -145,10 +145,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     onPressed: auth.isBusy ? null : _submit,
                     child: auth.isBusy
                         ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : const Text('Зарегистрироваться'),
                   ),
                   TextButton(

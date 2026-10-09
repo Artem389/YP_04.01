@@ -50,8 +50,9 @@ class _PromotionFormScreenState extends State<PromotionFormScreen> {
   }
 
   Future<void> _load() async {
-    final p =
-    await context.read<PromotionRepository>().findById(widget.promotionId!);
+    final p = await context.read<PromotionRepository>().findById(
+      widget.promotionId!,
+    );
     if (!mounted) return;
     if (p == null) {
       _saved = true;
@@ -178,8 +179,7 @@ class _PromotionFormScreenState extends State<PromotionFormScreen> {
             key: 'minTotal',
             label: 'Минимальная сумма, ₽',
             controller: _minTotal,
-            keyboardType:
-            const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             validator: V.positiveNumber(allowZero: true),
           ),
         ],

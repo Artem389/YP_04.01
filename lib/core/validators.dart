@@ -51,7 +51,7 @@ class V {
   static Validator email() {
     final re = RegExp(r'^[\w.+]+@[\w.-]+\.[\w.-]+$');
     return (v) =>
-    re.hasMatch(v?.trim() ?? '') ? null : 'Некорректный адрес почты';
+        re.hasMatch(v?.trim() ?? '') ? null : 'Некорректный адрес почты';
   }
 
   static Validator combine(List<Validator> validators) {

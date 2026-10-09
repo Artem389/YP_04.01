@@ -13,12 +13,12 @@ import '../widgets/entity_table.dart';
 /// Настраивается: колонки, маршруты, обработчик удаления.
 class EntityListScreen<T> extends StatefulWidget {
   final String title;
-  final String basePath;              // '/products', '/suppliers'
+  final String basePath; // '/products', '/suppliers'
   final Map<String, String> queryParams;
   final List<TableColumnSpec<T>> Function(BuildContext) columnsBuilder;
   final List<Widget> Function(BuildContext, T)? actionsBuilder;
   final Future<void> Function(BuildContext, T) onDelete;
-  final String? newPath;              // '/suppliers/new'
+  final String? newPath; // '/suppliers/new'
 
   const EntityListScreen({
     super.key,
@@ -225,11 +225,11 @@ class _EntityListScreenState<T> extends State<EntityListScreen<T>> {
 
         final titleWidget = cols.isNotEmpty
             ? DefaultTextStyle(
-          style: Theme.of(context).textTheme.titleMedium!.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-          child: cols[0].build(item),
-        )
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w600),
+                child: cols[0].build(item),
+              )
             : const SizedBox.shrink();
 
         final lines = <Widget>[];
@@ -238,8 +238,10 @@ class _EntityListScreenState<T> extends State<EntityListScreen<T>> {
           lines.add(
             Row(
               children: [
-                Text('${col.label}: ',
-                    style: const TextStyle(color: Colors.grey)),
+                Text(
+                  '${col.label}: ',
+                  style: const TextStyle(color: Colors.grey),
+                ),
                 Expanded(child: col.build(item)),
               ],
             ),
@@ -262,7 +264,6 @@ class _EntityListScreenState<T> extends State<EntityListScreen<T>> {
       },
     );
   }
-
 
   Widget _table(BuildContext context, EntityListNotifier<T> n) {
     return EntityTable<T>(
@@ -318,14 +319,17 @@ class _EntityListScreenState<T> extends State<EntityListScreen<T>> {
           IconButton(
             icon: const Icon(Icons.first_page),
             onPressed: r.hasPrevious
-                ? () => _updateQuery(n.query.copyWith(page: 1), resetPage: false)
+                ? () =>
+                      _updateQuery(n.query.copyWith(page: 1), resetPage: false)
                 : null,
           ),
           IconButton(
             icon: const Icon(Icons.chevron_left),
             onPressed: r.hasPrevious
                 ? () => _updateQuery(
-                n.query.copyWith(page: n.query.page - 1), resetPage: false)
+                    n.query.copyWith(page: n.query.page - 1),
+                    resetPage: false,
+                  )
                 : null,
           ),
           Text('${r.page} / ${r.totalPages}'),
@@ -333,14 +337,18 @@ class _EntityListScreenState<T> extends State<EntityListScreen<T>> {
             icon: const Icon(Icons.chevron_right),
             onPressed: r.hasNext
                 ? () => _updateQuery(
-                n.query.copyWith(page: n.query.page + 1), resetPage: false)
+                    n.query.copyWith(page: n.query.page + 1),
+                    resetPage: false,
+                  )
                 : null,
           ),
           IconButton(
             icon: const Icon(Icons.last_page),
             onPressed: r.hasNext
                 ? () => _updateQuery(
-                n.query.copyWith(page: r.totalPages), resetPage: false)
+                    n.query.copyWith(page: r.totalPages),
+                    resetPage: false,
+                  )
                 : null,
           ),
         ],
@@ -357,11 +365,13 @@ class _EntityListScreenState<T> extends State<EntityListScreen<T>> {
         content: Text('Будет помечено как удалённых: ${n.selected.length}.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Удалить')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить'),
+          ),
         ],
       ),
     );

@@ -29,7 +29,7 @@ class ForbiddenScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 const Text(
                   'У вашей роли нет доступа к этому разделу. '
-                      'Если вы считаете, что это ошибка, обратитесь к администратору.',
+                  'Если вы считаете, что это ошибка, обратитесь к администратору.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),

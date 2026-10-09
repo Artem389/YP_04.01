@@ -5,21 +5,16 @@ import 'package:flutter_project_web/models/product.dart';
 import 'package:flutter_project_web/models/promotion.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Product _p({
-  int id = 1,
-  double price = 100,
-  int categoryId = 1,
-}) =>
-    Product(
-      id: id,
-      name: 'Товар $id',
-      sku: 'SKU-$id',
-      price: price,
-      weightGr: 100,
-      categoryId: categoryId,
-      stockTotal: 100,
-      stockAvailable: 100,
-    );
+Product _p({int id = 1, double price = 100, int categoryId = 1}) => Product(
+  id: id,
+  name: 'Товар $id',
+  sku: 'SKU-$id',
+  price: price,
+  weightGr: 100,
+  categoryId: categoryId,
+  stockTotal: 100,
+  stockAvailable: 100,
+);
 
 void main() {
   group('SaleCalculator — базовая арифметика', () {

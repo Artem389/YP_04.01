@@ -209,9 +209,7 @@ class _GroceryAppState extends State<GroceryApp> {
       builder: (context, child) {
         // Пока роутер не отрисовал первый экран, показываем заглушку.
         // Это убирает белый экран при холодной загрузке.
-        return InactivityWatcher(
-          child: child ?? _StartupPlaceholder(),
-        );
+        return InactivityWatcher(child: child ?? _StartupPlaceholder());
       },
     );
   }

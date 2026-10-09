@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Описание одного поля формы.
 class FormFieldSpec {
-  final String key;                        // 'name', 'email'
+  final String key; // 'name', 'email'
   final String label;
   final TextEditingController controller;
   final String? Function(String?)? validator;
@@ -96,10 +96,10 @@ class _EntityFormState extends State<EntityForm> {
                     onPressed: _submitting ? null : _handleSubmit,
                     child: _submitting
                         ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : Text(widget.submitLabel),
                   ),
                   TextButton(

@@ -6,9 +6,9 @@ import '../models/promotion.dart';
 
 abstract interface class PromotionRepository {
   Future<PageResult<Promotion>> find(
-      ProductQuery query, {
-        CancelToken? cancelToken,
-      });
+    ProductQuery query, {
+    CancelToken? cancelToken,
+  });
   Future<List<Promotion>> findAll();
   Future<Promotion?> findById(int id);
   Future<Promotion> create(Promotion promotion);

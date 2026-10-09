@@ -42,9 +42,7 @@ class Promotion {
 
   /// Активна ли акция в указанный момент.
   bool isActiveAt(DateTime moment) =>
-      !isDeleted &&
-          !moment.isBefore(startsAt) &&
-          !moment.isAfter(endsAt);
+      !isDeleted && !moment.isBefore(startsAt) && !moment.isAfter(endsAt);
 
   Promotion copyWith({
     String? name,
@@ -63,8 +61,7 @@ class Promotion {
       name: name ?? this.name,
       description: description ?? this.description,
       discountPercent: discountPercent ?? this.discountPercent,
-      categoryId:
-      categoryId == _unset ? this.categoryId : categoryId as int?,
+      categoryId: categoryId == _unset ? this.categoryId : categoryId as int?,
       productIds: productIds ?? this.productIds,
       minTotal: minTotal ?? this.minTotal,
       startsAt: startsAt ?? this.startsAt,
@@ -96,14 +93,16 @@ class Promotion {
     description: (json['description'] ?? '') as String,
     discountPercent: (json['discountPercent'] as num?)?.toInt() ?? 0,
     categoryId: (json['categoryId'] as num?)?.toInt(),
-    productIds: (json['productIds'] as List?)
-        ?.map((e) => (e as num).toInt())
-        .toList() ??
+    productIds:
+        (json['productIds'] as List?)
+            ?.map((e) => (e as num).toInt())
+            .toList() ??
         const [],
     minTotal: (json['minTotal'] as num?)?.toDouble() ?? 0,
-    startsAt: DateTime.tryParse(json['startsAt'] as String? ?? '') ??
-        DateTime.now(),
-    endsAt: DateTime.tryParse(json['endsAt'] as String? ?? '') ??
+    startsAt:
+        DateTime.tryParse(json['startsAt'] as String? ?? '') ?? DateTime.now(),
+    endsAt:
+        DateTime.tryParse(json['endsAt'] as String? ?? '') ??
         DateTime.now().add(const Duration(days: 30)),
     deletedAt: json['deletedAt'] == null
         ? null

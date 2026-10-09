@@ -7,13 +7,13 @@ import '../models/product_category.dart';
 import '../models/product_query.dart';
 import 'product_category_repository.dart';
 
-class InMemoryProductCategoryRepository
-    implements ProductCategoryRepository {
+class InMemoryProductCategoryRepository implements ProductCategoryRepository {
   final List<ProductCategory> _categories = [...seedCategories];
   int _nextId = seedCategories.length + 1;
 
   @override
-  Future<PageResult<ProductCategory>> find(ProductQuery q, {
+  Future<PageResult<ProductCategory>> find(
+    ProductQuery q, {
     CancelToken? cancelToken,
   }) async {
     await Future.delayed(const Duration(milliseconds: 150));
@@ -24,16 +24,19 @@ class InMemoryProductCategoryRepository
     if (q.search.trim().isNotEmpty) {
       final needle = q.search.trim().toLowerCase();
       rows = rows
-          .where((c) =>
-      c.name.toLowerCase().contains(needle) ||
-          c.description.toLowerCase().contains(needle))
+          .where(
+            (c) =>
+                c.name.toLowerCase().contains(needle) ||
+                c.description.toLowerCase().contains(needle),
+          )
           .toList();
     }
 
     rows.sort((a, b) {
       final r = switch (q.sortField) {
-        'description' =>
-            a.description.toLowerCase().compareTo(b.description.toLowerCase()),
+        'description' => a.description.toLowerCase().compareTo(
+          b.description.toLowerCase(),
+        ),
         _ => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
       };
       return q.sortAscending ? r : -r;
@@ -117,7 +120,8 @@ class InMemoryProductCategoryRepository
 
   @override
   Future<bool> nameExists(String name, {int? exceptId}) async {
-    return _categories.any((c) =>
-    c.name.toLowerCase() == name.toLowerCase() && c.id != exceptId);
+    return _categories.any(
+      (c) => c.name.toLowerCase() == name.toLowerCase() && c.id != exceptId,
+    );
   }
 }

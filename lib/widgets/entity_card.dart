@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 /// но настраиваемая через описание полей.
 class EntityCard<T> extends StatelessWidget {
   final T item;
+
   /// Основной заголовок (обычно первая колонка).
   final Widget title;
+
   /// Дополнительные строки (остальные колонки).
   final List<Widget> lines;
   final bool selected;
@@ -34,21 +36,15 @@ class EntityCard<T> extends StatelessWidget {
         subtitle: lines.isEmpty
             ? null
             : Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final l in lines) ...[
-              l,
-              const SizedBox(height: 2),
-            ],
-          ],
-        ),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final l in lines) ...[l, const SizedBox(height: 2)],
+                ],
+              ),
         isThreeLine: lines.length >= 2,
         trailing: actions.isEmpty
             ? null
-            : Row(
-          mainAxisSize: MainAxisSize.min,
-          children: actions,
-        ),
+            : Row(mainAxisSize: MainAxisSize.min, children: actions),
       ),
     );
   }

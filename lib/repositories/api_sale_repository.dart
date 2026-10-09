@@ -11,10 +11,7 @@ class ApiSaleRepository implements SaleRepository {
   ApiSaleRepository(this._dio);
 
   @override
-  Future<PageResult<Sale>> find(
-      ProductQuery q, {
-        CancelToken? cancelToken,
-      }) =>
+  Future<PageResult<Sale>> find(ProductQuery q, {CancelToken? cancelToken}) =>
       guard(() async {
         final response = await _dio.get(
           '/sales',
@@ -43,15 +40,17 @@ class ApiSaleRepository implements SaleRepository {
     required int customerId,
     required int productId,
     required int quantity,
-  }) =>
-      guard(() async {
-        final response = await _dio.post('/sales', data: {
-          'customerId': customerId,
-          'productId': productId,
-          'quantity': quantity,
-        });
-        return Sale.fromJson(response.data as Map<String, dynamic>);
-      });
+  }) => guard(() async {
+    final response = await _dio.post(
+      '/sales',
+      data: {
+        'customerId': customerId,
+        'productId': productId,
+        'quantity': quantity,
+      },
+    );
+    return Sale.fromJson(response.data as Map<String, dynamic>);
+  });
 
   @override
   Future<Sale> close(int saleId) => guard(() async {
@@ -63,18 +62,15 @@ class ApiSaleRepository implements SaleRepository {
   Future<void> softDelete(int id) => guard(() => _dio.delete('/sales/$id'));
 
   @override
-  Future<void> hardDelete(int id) => guard(
-        () => _dio.delete('/sales/$id', queryParameters: {'hard': true}),
-  );
+  Future<void> hardDelete(int id) =>
+      guard(() => _dio.delete('/sales/$id', queryParameters: {'hard': true}));
 
   @override
-  Future<void> restore(int id) =>
-      guard(() => _dio.post('/sales/$id/restore'));
+  Future<void> restore(int id) => guard(() => _dio.post('/sales/$id/restore'));
 
   @override
   Future<int> deleteMany(List<int> ids) => guard(() async {
-    final response =
-    await _dio.post('/sales/bulk-delete', data: {'ids': ids});
+    final response = await _dio.post('/sales/bulk-delete', data: {'ids': ids});
     return (response.data as Map<String, dynamic>)['deleted'] as int? ?? 0;
   });
 }

@@ -82,8 +82,7 @@ class SaleCalculator {
       final suitable = promotions.where((p) {
         if (!p.isActiveAt(moment)) return false;
         if (p.productIds.contains(line.product.id)) return true;
-        if (p.categoryId != null &&
-            p.categoryId == line.product.categoryId) {
+        if (p.categoryId != null && p.categoryId == line.product.categoryId) {
           return true;
         }
         return false;

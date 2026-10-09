@@ -47,17 +47,14 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.queryParams != widget.queryParams) {
       final q = ProductQuery.fromUri(widget.queryParams);
-      final current =
-          context.read<EntityListNotifier<ProductCategory>>().query;
+      final current = context.read<EntityListNotifier<ProductCategory>>().query;
       if (_searchController.text != q.search) {
         _searchController.text = q.search;
       }
       if (q.toUri().toString() != current.toUri().toString()) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          context
-              .read<EntityListNotifier<ProductCategory>>()
-              .applyQuery(q);
+          context.read<EntityListNotifier<ProductCategory>>().applyQuery(q);
         });
       }
     }
@@ -209,7 +206,9 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
   }
 
   Widget _cardList(
-      BuildContext context, EntityListNotifier<ProductCategory> n) {
+    BuildContext context,
+    EntityListNotifier<ProductCategory> n,
+  ) {
     return ListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: n.result.items.length,
@@ -250,8 +249,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     );
   }
 
-  Widget _table(
-      BuildContext context, EntityListNotifier<ProductCategory> n) {
+  Widget _table(BuildContext context, EntityListNotifier<ProductCategory> n) {
     return EntityTable<ProductCategory>(
       items: n.result.items,
       idOf: (c) => c.id,
@@ -353,19 +351,17 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
           IconButton(
             icon: const Icon(Icons.first_page),
             onPressed: r.hasPrevious
-                ? () => _updateQuery(
-              n.query.copyWith(page: 1),
-              resetPage: false,
-            )
+                ? () =>
+                      _updateQuery(n.query.copyWith(page: 1), resetPage: false)
                 : null,
           ),
           IconButton(
             icon: const Icon(Icons.chevron_left),
             onPressed: r.hasPrevious
                 ? () => _updateQuery(
-              n.query.copyWith(page: n.query.page - 1),
-              resetPage: false,
-            )
+                    n.query.copyWith(page: n.query.page - 1),
+                    resetPage: false,
+                  )
                 : null,
           ),
           Text('${r.page} / ${r.totalPages}'),
@@ -373,18 +369,18 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
             icon: const Icon(Icons.chevron_right),
             onPressed: r.hasNext
                 ? () => _updateQuery(
-              n.query.copyWith(page: n.query.page + 1),
-              resetPage: false,
-            )
+                    n.query.copyWith(page: n.query.page + 1),
+                    resetPage: false,
+                  )
                 : null,
           ),
           IconButton(
             icon: const Icon(Icons.last_page),
             onPressed: r.hasNext
                 ? () => _updateQuery(
-              n.query.copyWith(page: r.totalPages),
-              resetPage: false,
-            )
+                    n.query.copyWith(page: r.totalPages),
+                    resetPage: false,
+                  )
                 : null,
           ),
         ],
@@ -412,7 +408,9 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
   }
 
   Future<void> _confirmSoftDelete(
-      BuildContext context, ProductCategory c) async {
+    BuildContext context,
+    ProductCategory c,
+  ) async {
     final productRepo = context.read<ProductRepository>();
     final linked = await productRepo.countByCategory(c.id);
     if (!context.mounted) return;
@@ -422,9 +420,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('Удаление невозможно'),
-          content: Text(
-            'На категорию «${c.name}» ссылаются $linked товаров.',
-          ),
+          content: Text('На категорию «${c.name}» ссылаются $linked товаров.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -440,9 +436,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Удалить категорию?'),
-        content: Text(
-          'Категория «${c.name}» будет помечена как удалённая.',
-        ),
+        content: Text('Категория «${c.name}» будет помечена как удалённая.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -458,15 +452,15 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     if (ok == true && context.mounted) {
       await context.read<ProductCategoryRepository>().softDelete(c.id);
       if (context.mounted) {
-        await context
-            .read<EntityListNotifier<ProductCategory>>()
-            .load();
+        await context.read<EntityListNotifier<ProductCategory>>().load();
       }
     }
   }
 
   Future<void> _confirmHardDelete(
-      BuildContext context, ProductCategory c) async {
+    BuildContext context,
+    ProductCategory c,
+  ) async {
     final productRepo = context.read<ProductRepository>();
     final linked = await productRepo.countByCategory(c.id);
     if (!context.mounted) return;
@@ -476,9 +470,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('Удаление невозможно'),
-          content: Text(
-            'На категорию «${c.name}» ссылаются $linked товаров.',
-          ),
+          content: Text('На категорию «${c.name}» ссылаются $linked товаров.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -496,7 +488,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
         title: const Text('Удалить категорию навсегда?'),
         content: Text(
           'Категория «${c.name}» будет удалена физически. '
-              'Восстановление невозможно.',
+          'Восстановление невозможно.',
         ),
         actions: [
           TextButton(
@@ -515,15 +507,12 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
       await context.read<ProductCategoryRepository>().hardDelete(c.id);
       _linkedProductsCountCache.remove(c.id);
       if (context.mounted) {
-        await context
-            .read<EntityListNotifier<ProductCategory>>()
-            .load();
+        await context.read<EntityListNotifier<ProductCategory>>().load();
       }
     }
   }
 
-  Future<void> _restore(
-      BuildContext context, ProductCategory c) async {
+  Future<void> _restore(BuildContext context, ProductCategory c) async {
     await context.read<ProductCategoryRepository>().restore(c.id);
     if (context.mounted) {
       await context.read<EntityListNotifier<ProductCategory>>().load();
@@ -536,9 +525,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Удалить выбранные категории?'),
-        content: Text(
-          'Будет помечено как удалённых: ${n.selected.length}.',
-        ),
+        content: Text('Будет помечено как удалённых: ${n.selected.length}.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

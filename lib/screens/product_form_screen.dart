@@ -80,8 +80,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       });
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
       context.go('/products');
     }
   }
@@ -183,13 +184,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     } on ConflictException catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
@@ -280,7 +283,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   validator: V.combine([
                     V.required(),
                     V.length(min: 2, max: 120),
-                        (v) => _serverErrors['title'],
+                    (v) => _serverErrors['title'],
                   ]),
                 ),
                 FormFieldSpec(
@@ -290,7 +293,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   validator: V.combine([
                     V.required(),
                     V.length(min: 3, max: 30),
-                        (v) => _serverErrors['isbn'],
+                    (v) => _serverErrors['isbn'],
                   ]),
                 ),
                 FormFieldSpec(
@@ -302,7 +305,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   ),
                   validator: V.combine([
                     V.positiveNumber(),
-                        (v) => _serverErrors['year'],
+                    (v) => _serverErrors['year'],
                   ]),
                 ),
                 FormFieldSpec(
@@ -312,7 +315,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   keyboardType: TextInputType.number,
                   validator: V.combine([
                     V.integer(min: 1, max: 100000),
-                        (v) => _serverErrors['pages'],
+                    (v) => _serverErrors['pages'],
                   ]),
                 ),
                 FormFieldSpec(
@@ -322,7 +325,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   keyboardType: TextInputType.number,
                   validator: V.combine([
                     V.nonNegativeInt(),
-                        (v) => _serverErrors['copiesTotal'],
+                    (v) => _serverErrors['copiesTotal'],
                   ]),
                 ),
                 FormFieldSpec(
@@ -345,8 +348,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     errorText: _serverErrors['genreIds'],
                   ),
                   items: refs.categories
-                      .map((c) =>
-                      DropdownMenuItem(value: c.id, child: Text(c.name)))
+                      .map(
+                        (c) =>
+                            DropdownMenuItem(value: c.id, child: Text(c.name)),
+                      )
                       .toList(),
                   onChanged: (v) => setState(() => _categoryId = v),
                   validator: (v) => v == null ? 'Выберите категорию' : null,

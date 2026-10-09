@@ -9,19 +9,21 @@ enum LoadStatus { idle, loading, success, error }
 
 class EntityListNotifier<T> extends ChangeNotifier {
   final Future<PageResult<T>> Function(
-      ProductQuery query, {
-      CancelToken? cancelToken,
-      }) _fetcher;
+    ProductQuery query, {
+    CancelToken? cancelToken,
+  })
+  _fetcher;
   final Future<int> Function(List<int>)? _deleteMany;
 
   EntityListNotifier({
     required Future<PageResult<T>> Function(
-        ProductQuery query, {
-        CancelToken? cancelToken,
-        }) fetcher,
+      ProductQuery query, {
+      CancelToken? cancelToken,
+    })
+    fetcher,
     Future<int> Function(List<int>)? deleteMany,
-  })  : _fetcher = fetcher,
-        _deleteMany = deleteMany;
+  }) : _fetcher = fetcher,
+       _deleteMany = deleteMany;
 
   ProductQuery _query = const ProductQuery();
   PageResult<T> _result = PageResult<T>.empty();

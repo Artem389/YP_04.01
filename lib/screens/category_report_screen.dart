@@ -146,7 +146,10 @@ class _CategoryReportScreenState extends State<CategoryReportScreen> {
             children: [
               _summary('Категорий', '${_rows.length}'),
               _summary('Остаток', '$totalStock шт.'),
-              _summary('Стоимость склада', '${totalValue.toStringAsFixed(2)} ₽'),
+              _summary(
+                'Стоимость склада',
+                '${totalValue.toStringAsFixed(2)} ₽',
+              ),
             ],
           ),
         ),
@@ -212,10 +215,7 @@ class _CategoryReportScreenState extends State<CategoryReportScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         Text(
           value,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),

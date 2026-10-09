@@ -73,7 +73,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         final u = _users[i];
         final role = Role.parse(u['role'] as String?);
         return ListTile(
-          leading: CircleAvatar(child: Text('${u['username']}'[0].toUpperCase())),
+          leading: CircleAvatar(
+            child: Text('${u['username']}'[0].toUpperCase()),
+          ),
           title: Text('${u['fullName']}'),
           subtitle: Text('${u['username']} • ${u['email']}'),
           trailing: Chip(label: Text(role.label)),

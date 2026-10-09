@@ -12,38 +12,40 @@ class ApiSupplierRepository implements SupplierRepository {
 
   @override
   Future<PageResult<Supplier>> find(
-      ProductQuery q, {
-        CancelToken? cancelToken,
-      }) =>
-      guard(() async {
-        final response = await _dio.get(
-          '/suppliers',
-          cancelToken: cancelToken,
-          queryParameters: {
-            if (q.search.trim().isNotEmpty) 'search': q.search.trim(),
-            'sort': '${q.sortField == 'name' ? 'name' : 'name'},'
-                '${q.sortAscending ? 'asc' : 'desc'}',
-            'page': q.page,
-            'size': q.size,
-            if (q.includeDeleted) 'includeDeleted': true,
-          },
-        );
-        final data = response.data as Map<String, dynamic>;
-        return PageResult<Supplier>(
-          items: (data['items'] as List)
-              .whereType<Map<String, dynamic>>()
-              .map(Supplier.fromJson)
-              .toList(),
-          page: (data['page'] as num?)?.toInt() ?? 1,
-          size: (data['size'] as num?)?.toInt() ?? q.size,
-          total: (data['total'] as num?)?.toInt() ?? 0,
-        );
-      });
+    ProductQuery q, {
+    CancelToken? cancelToken,
+  }) => guard(() async {
+    final response = await _dio.get(
+      '/suppliers',
+      cancelToken: cancelToken,
+      queryParameters: {
+        if (q.search.trim().isNotEmpty) 'search': q.search.trim(),
+        'sort':
+            '${q.sortField == 'name' ? 'name' : 'name'},'
+            '${q.sortAscending ? 'asc' : 'desc'}',
+        'page': q.page,
+        'size': q.size,
+        if (q.includeDeleted) 'includeDeleted': true,
+      },
+    );
+    final data = response.data as Map<String, dynamic>;
+    return PageResult<Supplier>(
+      items: (data['items'] as List)
+          .whereType<Map<String, dynamic>>()
+          .map(Supplier.fromJson)
+          .toList(),
+      page: (data['page'] as num?)?.toInt() ?? 1,
+      size: (data['size'] as num?)?.toInt() ?? q.size,
+      total: (data['total'] as num?)?.toInt() ?? 0,
+    );
+  });
 
   @override
   Future<List<Supplier>> findAll() => guard(() async {
-    final response =
-    await _dio.get('/suppliers', queryParameters: {'size': 100});
+    final response = await _dio.get(
+      '/suppliers',
+      queryParameters: {'size': 100},
+    );
     final data = response.data as Map<String, dynamic>;
     return (data['items'] as List)
         .whereType<Map<String, dynamic>>()
@@ -59,25 +61,25 @@ class ApiSupplierRepository implements SupplierRepository {
 
   @override
   Future<Supplier> create(Supplier s) => guard(() async {
-    final response =
-    await _dio.post('/suppliers', data: s.toInputJson());
+    final response = await _dio.post('/suppliers', data: s.toInputJson());
     return Supplier.fromJson(response.data as Map<String, dynamic>);
   });
 
   @override
   Future<Supplier> update(Supplier s) => guard(() async {
-    final response =
-    await _dio.put('/suppliers/${s.id}', data: s.toInputJson());
+    final response = await _dio.put(
+      '/suppliers/${s.id}',
+      data: s.toInputJson(),
+    );
     return Supplier.fromJson(response.data as Map<String, dynamic>);
   });
 
   @override
-  Future<void> softDelete(int id) =>
-      guard(() => _dio.delete('/suppliers/$id'));
+  Future<void> softDelete(int id) => guard(() => _dio.delete('/suppliers/$id'));
 
   @override
   Future<void> hardDelete(int id) => guard(
-        () => _dio.delete('/suppliers/$id', queryParameters: {'hard': true}),
+    () => _dio.delete('/suppliers/$id', queryParameters: {'hard': true}),
   );
 
   @override
@@ -86,8 +88,10 @@ class ApiSupplierRepository implements SupplierRepository {
 
   @override
   Future<int> deleteMany(List<int> ids) => guard(() async {
-    final response =
-    await _dio.post('/suppliers/bulk-delete', data: {'ids': ids});
+    final response = await _dio.post(
+      '/suppliers/bulk-delete',
+      data: {'ids': ids},
+    );
     return (response.data as Map<String, dynamic>)['deleted'] as int? ?? 0;
   });
 
@@ -100,9 +104,8 @@ class ApiSupplierRepository implements SupplierRepository {
     );
     final data = response.data as Map<String, dynamic>;
     return (data['items'] as List).whereType<Map<String, dynamic>>().any(
-          (m) =>
-      (m['email'] as String?)?.toLowerCase() ==
-          email.toLowerCase() &&
+      (m) =>
+          (m['email'] as String?)?.toLowerCase() == email.toLowerCase() &&
           (m['id'] as num?)?.toInt() != exceptId,
     );
   });
